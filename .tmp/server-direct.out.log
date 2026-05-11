@@ -1,0 +1,30 @@
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +48ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +46ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mHealthModule dependencies initialized[39m[38;5;3m +29ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mInsurersModule dependencies initialized[39m[38;5;3m +27ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOffersModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTariffsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mSimulationsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mQuoteRequestsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mHealthController {/api/health}:[39m[38;5;3m +13ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/health, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mInsurersController {/api/insurers}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/insurers, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/insurers/:slug, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/insurers, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/insurers/:id, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOffersController {/api/offers}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/offers, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/offers/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/offers, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/offers/:id, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTariffsController {/api/tariffs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tariffs, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tariffs, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tariffs/:id, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mSimulationsController {/api/simulations}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/simulations/auto, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mQuoteRequestsController {/api/quote-requests}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/quote-requests, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 9696  - [39m06/05/2026 15:21:51 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/quote-requests, POST} route[39m[38;5;3m +0ms[39m
