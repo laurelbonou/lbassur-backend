@@ -42,4 +42,13 @@ export class CreateQuoteRequestDto {
   @IsOptional()
   @IsObject()
   payload?: Record<string, unknown>;
+
+  @IsOptional()
+  documents?: {
+    type: string;
+    filename: string;
+    url: string;
+    mimeType: string;
+    size: number;
+  }[];
 }

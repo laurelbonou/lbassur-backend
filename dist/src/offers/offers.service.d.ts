@@ -91,12 +91,12 @@ export declare class OffersService {
             guarantees: string[];
             duration: string | null;
             metadata: Prisma.JsonValue | null;
+            price: Prisma.Decimal;
             zone: string;
             offerId: string | null;
             vehicleUsage: string | null;
             vehiclePower: string | null;
             vehicleEnergy: string | null;
-            price: Prisma.Decimal;
             currency: string;
             active: boolean;
             validFrom: Date | null;

@@ -23,13 +23,28 @@ let QuoteRequestsService = class QuoteRequestsService {
         });
     }
     create(dto) {
+        const { documents, ...rest } = dto;
         const data = {
-            ...dto,
+            ...rest,
             status: "NEW",
-            payload: dto.payload,
+            payload: rest.payload,
+            documents: documents?.length
+                ? {
+                    create: documents.map((doc) => ({
+                        type: doc.type,
+                        filename: doc.filename,
+                        url: doc.url,
+                        mimeType: doc.mimeType,
+                        size: doc.size,
+                    })),
+                }
+                : undefined,
         };
         return this.prisma.quoteRequest.create({
             data,
+            include: {
+                documents: true,
+            },
         });
     }
 };

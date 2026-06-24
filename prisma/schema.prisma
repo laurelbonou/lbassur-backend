@@ -32,6 +32,12 @@ enum LeadStatus {
   LOST
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 enum AdminRole {
   ADMIN
   EDITOR
@@ -169,11 +175,39 @@ model QuoteRequest {
   message         String?
   payload         Json?
   status          LeadStatus         @default(NEW)
+  documents       Document[]
+  payment         Payment?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   @@index([status])
   @@index([createdAt])
+}
+
+model Document {
+  id             String        @id @default(cuid())
+  quoteRequestId String
+  quoteRequest   QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  type           String        // "carte_grise", "piece_identite", etc.
+  filename       String
+  url            String        // path to the local or cloud file
+  mimeType       String
+  size           Int
+  createdAt      DateTime      @default(now())
+
+  @@index([quoteRequestId])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  quoteRequestId String        @unique
+  quoteRequest   QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  amount         Decimal       @db.Decimal(12, 2)
+  method         String        // "MTN", "MOOV", "VISA", "MASTERCARD"
+  status         PaymentStatus @default(PENDING)
+  reference      String        @unique // e.g. "LB-XYZ123"
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model AdminUser {

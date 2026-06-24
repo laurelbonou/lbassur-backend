@@ -23,6 +23,7 @@ class CreateQuoteRequestDto {
     selectedOfferId;
     message;
     payload;
+    documents;
 }
 exports.CreateQuoteRequestDto = CreateQuoteRequestDto;
 __decorate([
@@ -76,4 +77,8 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], CreateQuoteRequestDto.prototype, "payload", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], CreateQuoteRequestDto.prototype, "documents", void 0);
 //# sourceMappingURL=create-quote-request.dto.js.map

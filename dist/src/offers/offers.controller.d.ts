@@ -90,12 +90,12 @@ export declare class OffersController {
             guarantees: string[];
             duration: string | null;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            price: import("@prisma/client/runtime/library").Decimal;
             zone: string;
             offerId: string | null;
             vehicleUsage: string | null;
             vehiclePower: string | null;
             vehicleEnergy: string | null;
-            price: import("@prisma/client/runtime/library").Decimal;
             currency: string;
             active: boolean;
             validFrom: Date | null;

@@ -8,19 +8,27 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const serve_static_1 = require("@nestjs/serve-static");
+const path_1 = require("path");
 const health_module_1 = require("./health/health.module");
 const insurers_module_1 = require("./insurers/insurers.module");
 const offers_module_1 = require("./offers/offers.module");
+const payments_module_1 = require("./payments/payments.module");
 const prisma_module_1 = require("./prisma/prisma.module");
 const quote_requests_module_1 = require("./quote-requests/quote-requests.module");
 const simulations_module_1 = require("./simulations/simulations.module");
 const tariffs_module_1 = require("./tariffs/tariffs.module");
+const uploads_module_1 = require("./uploads/uploads.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: (0, path_1.join)(__dirname, "..", "..", "uploads"),
+                serveRoot: "/uploads",
+            }),
             prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
             insurers_module_1.InsurersModule,
@@ -28,6 +36,8 @@ exports.AppModule = AppModule = __decorate([
             tariffs_module_1.TariffsModule,
             simulations_module_1.SimulationsModule,
             quote_requests_module_1.QuoteRequestsModule,
+            uploads_module_1.UploadsModule,
+            payments_module_1.PaymentsModule,
         ],
     })
 ], AppModule);

@@ -20,6 +20,17 @@ export declare class QuoteRequestsController {
         payload: import("@prisma/client/runtime/library").JsonValue | null;
     }[]>;
     create(dto: CreateQuoteRequestDto): import(".prisma/client").Prisma.Prisma__QuoteRequestClient<{
+        documents: {
+            id: string;
+            createdAt: Date;
+            type: string;
+            quoteRequestId: string;
+            filename: string;
+            url: string;
+            mimeType: string;
+            size: number;
+        }[];
+    } & {
         phone: string;
         insuranceType: string | null;
         id: string;

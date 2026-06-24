@@ -10,4 +10,11 @@ export declare class CreateQuoteRequestDto {
     selectedOfferId?: string;
     message?: string;
     payload?: Record<string, unknown>;
+    documents?: {
+        type: string;
+        filename: string;
+        url: string;
+        mimeType: string;
+        size: number;
+    }[];
 }
