@@ -120,6 +120,22 @@ export class DocumentsService {
         doc.image(qrBuffer, 50, doc.y, { fit: [100, 100] });
         doc.text('Scannez ce QR Code pour vérifier l\'authenticité de ce contrat.', 160, doc.y + 40);
 
+        // Add Signature if it exists
+        if (quoteRequest.signatureUrl) {
+          try {
+             const relativeSignaturePath = quoteRequest.signatureUrl.replace(/^\//, '');
+             const signaturePath = path.join(__dirname, '..', '..', '..', relativeSignaturePath);
+             if (fs.existsSync(signaturePath)) {
+               doc.moveDown(3);
+               doc.text('Signature de l\'assuré :', 50, doc.y, { underline: true });
+               doc.moveDown(0.5);
+               doc.image(signaturePath, 50, doc.y, { fit: [150, 80] });
+             }
+          } catch (e) {
+             this.logger.error('Could not embed signature', e);
+          }
+        }
+
         doc.end();
 
         stream.on('finish', () => {

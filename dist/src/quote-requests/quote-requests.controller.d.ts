@@ -9,7 +9,28 @@ export declare class QuoteRequestsController {
     private readonly documentsService;
     private readonly notificationsService;
     constructor(quoteRequestsService: QuoteRequestsService, prisma: PrismaService, documentsService: DocumentsService, notificationsService: NotificationsService);
-    findAll(): import(".prisma/client").Prisma.PrismaPromise<{
+    findAll(): import(".prisma/client").Prisma.PrismaPromise<({
+        payment: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            quoteRequestId: string;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            method: string;
+            reference: string;
+        } | null;
+        documents: {
+            id: string;
+            createdAt: Date;
+            type: string;
+            url: string;
+            quoteRequestId: string;
+            filename: string;
+            mimeType: string;
+            size: number;
+        }[];
+    } & {
         phone: string;
         insuranceType: string | null;
         id: string;
@@ -27,7 +48,47 @@ export declare class QuoteRequestsController {
         policyNumber: string | null;
         receiptUrl: string | null;
         contractUrl: string | null;
-    }[]>;
+    })[]>;
+    findOne(id: string): Promise<{
+        payment: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            quoteRequestId: string;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            method: string;
+            reference: string;
+        } | null;
+        documents: {
+            id: string;
+            createdAt: Date;
+            type: string;
+            url: string;
+            quoteRequestId: string;
+            filename: string;
+            mimeType: string;
+            size: number;
+        }[];
+    } & {
+        phone: string;
+        insuranceType: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LeadStatus;
+        category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        fullName: string;
+        email: string | null;
+        company: string | null;
+        budget: import("@prisma/client/runtime/library").Decimal | null;
+        selectedOfferId: string | null;
+        message: string | null;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
+    }>;
     create(dto: CreateQuoteRequestDto): import(".prisma/client").Prisma.Prisma__QuoteRequestClient<{
         documents: {
             id: string;

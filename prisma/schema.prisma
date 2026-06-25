@@ -182,6 +182,7 @@ model QuoteRequest {
   policyNumber    String?
   receiptUrl      String?
   contractUrl     String?
+  signatureUrl    String?
   documents       Document[]
   payment         Payment?
   createdAt       DateTime           @default(now())

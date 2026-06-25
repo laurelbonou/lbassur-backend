@@ -51,4 +51,8 @@ export class CreateQuoteRequestDto {
     mimeType: string;
     size: number;
   }[];
+
+  @IsOptional()
+  @IsString()
+  signatureData?: string;
 }

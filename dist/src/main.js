@@ -5,8 +5,10 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const swagger_1 = require("@nestjs/swagger");
 const app_module_1 = require("./app.module");
+const helmet_1 = require("helmet");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.use((0, helmet_1.default)());
     const logger = new common_1.Logger("Bootstrap");
     const frontendUrls = process.env.FRONTEND_URL?.split(",").map((url) => url.trim()).filter(Boolean);
     const isProduction = process.env.NODE_ENV === "production";

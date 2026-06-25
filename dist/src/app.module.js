@@ -8,8 +8,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const serve_static_1 = require("@nestjs/serve-static");
-const path_1 = require("path");
+const throttler_1 = require("@nestjs/throttler");
+const core_1 = require("@nestjs/core");
 const health_module_1 = require("./health/health.module");
 const insurers_module_1 = require("./insurers/insurers.module");
 const offers_module_1 = require("./offers/offers.module");
@@ -27,10 +27,10 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            serve_static_1.ServeStaticModule.forRoot({
-                rootPath: (0, path_1.join)(__dirname, "..", "..", "uploads"),
-                serveRoot: "/uploads",
-            }),
+            throttler_1.ThrottlerModule.forRoot([{
+                    ttl: 60000,
+                    limit: 100,
+                }]),
             prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
             insurers_module_1.InsurersModule,
@@ -42,6 +42,12 @@ exports.AppModule = AppModule = __decorate([
             payments_module_1.PaymentsModule,
             notifications_module_1.NotificationsModule,
             documents_module_1.DocumentsModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: throttler_1.ThrottlerGuard,
+            },
         ],
     })
 ], AppModule);
