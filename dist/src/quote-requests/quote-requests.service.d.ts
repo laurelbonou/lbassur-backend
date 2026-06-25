@@ -19,15 +19,18 @@ export declare class QuoteRequestsService {
         selectedOfferId: string | null;
         message: string | null;
         payload: Prisma.JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
     }[]>;
     create(dto: CreateQuoteRequestDto): Prisma.Prisma__QuoteRequestClient<{
         documents: {
             id: string;
             createdAt: Date;
             type: string;
+            url: string;
             quoteRequestId: string;
             filename: string;
-            url: string;
             mimeType: string;
             size: number;
         }[];
@@ -46,5 +49,8 @@ export declare class QuoteRequestsService {
         selectedOfferId: string | null;
         message: string | null;
         payload: Prisma.JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
     }, never, import("@prisma/client/runtime/library").DefaultArgs, Prisma.PrismaClientOptions>;
 }

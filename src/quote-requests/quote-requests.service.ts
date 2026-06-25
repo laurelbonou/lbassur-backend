@@ -10,7 +10,23 @@ export class QuoteRequestsService {
   findAll() {
     return this.prisma.quoteRequest.findMany({
       orderBy: { createdAt: "desc" },
+      include: {
+        documents: true,
+        payment: true,
+      }
     });
+  }
+
+  async findOne(id: string) {
+    const quote = await this.prisma.quoteRequest.findUnique({
+      where: { id },
+      include: {
+        documents: true,
+        payment: true,
+      }
+    });
+    if (!quote) throw new Error("Quote not found");
+    return quote;
   }
 
   create(dto: CreateQuoteRequestDto) {

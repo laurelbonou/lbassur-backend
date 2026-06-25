@@ -19,6 +19,8 @@ const quote_requests_module_1 = require("./quote-requests/quote-requests.module"
 const simulations_module_1 = require("./simulations/simulations.module");
 const tariffs_module_1 = require("./tariffs/tariffs.module");
 const uploads_module_1 = require("./uploads/uploads.module");
+const notifications_module_1 = require("./notifications/notifications.module");
+const documents_module_1 = require("./documents/documents.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -38,6 +40,8 @@ exports.AppModule = AppModule = __decorate([
             quote_requests_module_1.QuoteRequestsModule,
             uploads_module_1.UploadsModule,
             payments_module_1.PaymentsModule,
+            notifications_module_1.NotificationsModule,
+            documents_module_1.DocumentsModule,
         ],
     })
 ], AppModule);

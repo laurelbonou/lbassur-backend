@@ -1,8 +1,14 @@
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { QuoteRequestsService } from "./quote-requests.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { DocumentsService } from "../documents/documents.service";
+import { NotificationsService } from "../notifications/notifications.service";
 export declare class QuoteRequestsController {
     private readonly quoteRequestsService;
-    constructor(quoteRequestsService: QuoteRequestsService);
+    private readonly prisma;
+    private readonly documentsService;
+    private readonly notificationsService;
+    constructor(quoteRequestsService: QuoteRequestsService, prisma: PrismaService, documentsService: DocumentsService, notificationsService: NotificationsService);
     findAll(): import(".prisma/client").Prisma.PrismaPromise<{
         phone: string;
         insuranceType: string | null;
@@ -18,15 +24,18 @@ export declare class QuoteRequestsController {
         selectedOfferId: string | null;
         message: string | null;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
     }[]>;
     create(dto: CreateQuoteRequestDto): import(".prisma/client").Prisma.Prisma__QuoteRequestClient<{
         documents: {
             id: string;
             createdAt: Date;
             type: string;
+            url: string;
             quoteRequestId: string;
             filename: string;
-            url: string;
             mimeType: string;
             size: number;
         }[];
@@ -45,5 +54,65 @@ export declare class QuoteRequestsController {
         selectedOfferId: string | null;
         message: string | null;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
     }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+    sendToInsurer(id: string): Promise<{
+        success: boolean;
+        quote: {
+            phone: string;
+            insuranceType: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.LeadStatus;
+            category: import(".prisma/client").$Enums.InsuranceCategory | null;
+            fullName: string;
+            email: string | null;
+            company: string | null;
+            budget: import("@prisma/client/runtime/library").Decimal | null;
+            selectedOfferId: string | null;
+            message: string | null;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            policyNumber: string | null;
+            receiptUrl: string | null;
+            contractUrl: string | null;
+        };
+    }>;
+    finalizeContract(id: string, policyNumber: string): Promise<{
+        success: boolean;
+        contractUrl: string;
+        quote: {
+            phone: string;
+            insuranceType: string | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.LeadStatus;
+            category: import(".prisma/client").$Enums.InsuranceCategory | null;
+            fullName: string;
+            email: string | null;
+            company: string | null;
+            budget: import("@prisma/client/runtime/library").Decimal | null;
+            selectedOfferId: string | null;
+            message: string | null;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            policyNumber: string | null;
+            receiptUrl: string | null;
+            contractUrl: string | null;
+        };
+    }>;
+    verifyContract(id: string): Promise<{
+        valid: boolean;
+        message: string;
+        contractDetails: {
+            id: string;
+            createdAt: Date;
+            status: import(".prisma/client").$Enums.LeadStatus;
+            fullName: string;
+            policyNumber: string | null;
+            contractUrl: string | null;
+        };
+    }>;
 }

@@ -1,11 +1,15 @@
-import { Controller, Post, UseInterceptors, UploadedFile, UploadedFiles, BadRequestException } from "@nestjs/common";
-import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
+import { Controller, Post, Get, Param, Res, UseInterceptors, UploadedFiles, BadRequestException, NotFoundException } from "@nestjs/common";
+import { FilesInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
-import { extname } from "path";
+import { extname, join } from "path";
+import { Throttle } from "@nestjs/throttler";
+import { Response } from "express";
+import * as fs from "fs";
 
 @Controller("uploads")
 export class UploadsController {
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseInterceptors(
     FilesInterceptor("files", 10, {
       storage: diskStorage({
@@ -44,5 +48,21 @@ export class UploadsController {
     }));
 
     return { files: fileUrls };
+  }
+
+  @Get(":filename")
+  getFile(@Param("filename") filename: string, @Res() res: Response) {
+    if (filename.includes("..") || filename.includes("/")) throw new BadRequestException("Invalid filename");
+    const filePath = join(__dirname, "..", "..", "..", "uploads", filename);
+    if (!fs.existsSync(filePath)) throw new NotFoundException("File not found");
+    res.sendFile(filePath);
+  }
+
+  @Get(":folder/:filename")
+  getFileFromFolder(@Param("folder") folder: string, @Param("filename") filename: string, @Res() res: Response) {
+    if (filename.includes("..") || filename.includes("/") || folder.includes("..") || folder.includes("/")) throw new BadRequestException("Invalid path");
+    const filePath = join(__dirname, "..", "..", "..", "uploads", folder, filename);
+    if (!fs.existsSync(filePath)) throw new NotFoundException("File not found");
+    res.sendFile(filePath);
   }
 }

@@ -1,5 +1,7 @@
 import { Controller, Post, Body, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { DocumentsService } from "../documents/documents.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 class SimulatePaymentDto {
   quoteRequestId: string;
@@ -8,7 +10,11 @@ class SimulatePaymentDto {
 
 @Controller("payments")
 export class PaymentsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documentsService: DocumentsService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   @Post("simulate")
   async simulatePayment(@Body() dto: SimulatePaymentDto) {
@@ -48,15 +54,27 @@ export class PaymentsController {
       },
     });
 
-    // Update QuoteRequest status
+    const receiptUrl = await this.documentsService.generateReceipt(quote, payment);
+
+    // Update QuoteRequest status and receiptUrl
     await this.prisma.quoteRequest.update({
       where: { id: quote.id },
-      data: { status: "CONVERTED" },
+      data: { 
+        status: "PROCESSING",
+        receiptUrl 
+      },
     });
+
+    // Notify client and admin
+    // Get admin emails (for now a default or from env)
+    const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
+    await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl);
+    await this.notificationsService.notifyAdminNewQuote(adminEmail, quote.id);
 
     return {
       success: true,
       payment,
+      receiptUrl
     };
   }
 }

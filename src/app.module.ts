@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { ServeStaticModule } from "@nestjs/serve-static";
-import { join } from "path";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
 import { HealthModule } from "./health/health.module";
 import { InsurersModule } from "./insurers/insurers.module";
 import { OffersModule } from "./offers/offers.module";
@@ -10,13 +10,15 @@ import { QuoteRequestsModule } from "./quote-requests/quote-requests.module";
 import { SimulationsModule } from "./simulations/simulations.module";
 import { TariffsModule } from "./tariffs/tariffs.module";
 import { UploadsModule } from "./uploads/uploads.module";
+import { NotificationsModule } from './notifications/notifications.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, "..", "..", "uploads"),
-      serveRoot: "/uploads",
-    }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100, // 100 requests per minute max globally
+    }]),
     PrismaModule,
     HealthModule,
     InsurersModule,
@@ -26,6 +28,14 @@ import { UploadsModule } from "./uploads/uploads.module";
     QuoteRequestsModule,
     UploadsModule,
     PaymentsModule,
+    NotificationsModule,
+    DocumentsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

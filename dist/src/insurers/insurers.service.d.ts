@@ -18,6 +18,7 @@ export declare class InsurersService {
         address: string | null;
         categories: import(".prisma/client").$Enums.InsuranceCategory[];
         id: string;
+        generalConditions: string | null;
         createdAt: Date;
         updatedAt: Date;
     })[]>;
@@ -58,6 +59,7 @@ export declare class InsurersService {
         address: string | null;
         categories: import(".prisma/client").$Enums.InsuranceCategory[];
         id: string;
+        generalConditions: string | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -71,6 +73,7 @@ export declare class InsurersService {
         address: string | null;
         categories: import(".prisma/client").$Enums.InsuranceCategory[];
         id: string;
+        generalConditions: string | null;
         createdAt: Date;
         updatedAt: Date;
     }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
@@ -84,6 +87,7 @@ export declare class InsurersService {
         address: string | null;
         categories: import(".prisma/client").$Enums.InsuranceCategory[];
         id: string;
+        generalConditions: string | null;
         createdAt: Date;
         updatedAt: Date;
     }>;

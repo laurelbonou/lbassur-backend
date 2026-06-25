@@ -28,6 +28,9 @@ enum OfferStatus {
 enum LeadStatus {
   NEW
   CONTACTED
+  PROCESSING
+  INSURER_PENDING
+  COMPLETED
   CONVERTED
   LOST
 }
@@ -52,6 +55,7 @@ model Insurer {
   website     String?
   phone       String?
   address     String?
+  generalConditions String? @db.Text
   categories  InsuranceCategory[] @default([])
   offers      Offer[]
   tariffRules TariffRule[]
@@ -175,6 +179,9 @@ model QuoteRequest {
   message         String?
   payload         Json?
   status          LeadStatus         @default(NEW)
+  policyNumber    String?
+  receiptUrl      String?
+  contractUrl     String?
   documents       Document[]
   payment         Payment?
   createdAt       DateTime           @default(now())

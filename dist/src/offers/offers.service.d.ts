@@ -17,6 +17,7 @@ export declare class OffersService {
             address: string | null;
             categories: import(".prisma/client").$Enums.InsuranceCategory[];
             id: string;
+            generalConditions: string | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -67,6 +68,7 @@ export declare class OffersService {
             address: string | null;
             categories: import(".prisma/client").$Enums.InsuranceCategory[];
             id: string;
+            generalConditions: string | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -91,12 +93,12 @@ export declare class OffersService {
             guarantees: string[];
             duration: string | null;
             metadata: Prisma.JsonValue | null;
-            price: Prisma.Decimal;
-            zone: string;
             offerId: string | null;
+            zone: string;
             vehicleUsage: string | null;
             vehiclePower: string | null;
             vehicleEnergy: string | null;
+            price: Prisma.Decimal;
             currency: string;
             active: boolean;
             validFrom: Date | null;

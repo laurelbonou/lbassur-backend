@@ -16,6 +16,7 @@ export declare class OffersController {
             address: string | null;
             categories: import(".prisma/client").$Enums.InsuranceCategory[];
             id: string;
+            generalConditions: string | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -66,6 +67,7 @@ export declare class OffersController {
             address: string | null;
             categories: import(".prisma/client").$Enums.InsuranceCategory[];
             id: string;
+            generalConditions: string | null;
             createdAt: Date;
             updatedAt: Date;
         };
@@ -90,12 +92,12 @@ export declare class OffersController {
             guarantees: string[];
             duration: string | null;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
-            price: import("@prisma/client/runtime/library").Decimal;
-            zone: string;
             offerId: string | null;
+            zone: string;
             vehicleUsage: string | null;
             vehiclePower: string | null;
             vehicleEnergy: string | null;
+            price: import("@prisma/client/runtime/library").Decimal;
             currency: string;
             active: boolean;
             validFrom: Date | null;
