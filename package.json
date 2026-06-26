@@ -4,7 +4,7 @@
   "private": true,
   "description": "Backend API for the LBASSUR insurance comparator.",
   "scripts": {
-    "build": "rm -rf dist *.tsbuildinfo && nest build",
+    "build": "yarn install --production=false && rm -rf dist *.tsbuildinfo && nest build",
     "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\" \"prisma/**/*.ts\"",
