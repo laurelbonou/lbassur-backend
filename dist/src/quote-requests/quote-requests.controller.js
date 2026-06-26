@@ -37,8 +37,14 @@ let QuoteRequestsController = class QuoteRequestsController {
     findOne(id) {
         return this.quoteRequestsService.findOne(id);
     }
+    createDraft(dto) {
+        return this.quoteRequestsService.createDraft(dto);
+    }
     create(dto) {
         return this.quoteRequestsService.create(dto);
+    }
+    update(id, dto) {
+        return this.quoteRequestsService.update(id, dto);
     }
     async sendToInsurer(id) {
         const quote = await this.prisma.quoteRequest.findUnique({
@@ -133,12 +139,27 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], QuoteRequestsController.prototype, "findOne", null);
 __decorate([
+    (0, common_1.Post)("draft"),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_quote_request_dto_1.CreateQuoteRequestDto]),
+    __metadata("design:returntype", void 0)
+], QuoteRequestsController.prototype, "createDraft", null);
+__decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_quote_request_dto_1.CreateQuoteRequestDto]),
     __metadata("design:returntype", void 0)
 ], QuoteRequestsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(":id"),
+    __param(0, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], QuoteRequestsController.prototype, "update", null);
 __decorate([
     (0, common_1.Post)(":id/send-to-insurer"),
     (0, common_1.UseGuards)(api_key_guard_1.ApiKeyGuard),

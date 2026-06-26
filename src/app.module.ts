@@ -12,6 +12,8 @@ import { TariffsModule } from "./tariffs/tariffs.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { NotificationsModule } from './notifications/notifications.module';
 import { DocumentsModule } from './documents/documents.module';
+import { AuthModule } from './auth/auth.module';
+import { ClientsModule } from './clients/clients.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { DocumentsModule } from './documents/documents.module';
     PaymentsModule,
     NotificationsModule,
     DocumentsModule,
+    AuthModule,
+    ClientsModule,
   ],
   providers: [
     {

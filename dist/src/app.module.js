@@ -21,6 +21,8 @@ const tariffs_module_1 = require("./tariffs/tariffs.module");
 const uploads_module_1 = require("./uploads/uploads.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const documents_module_1 = require("./documents/documents.module");
+const auth_module_1 = require("./auth/auth.module");
+const clients_module_1 = require("./clients/clients.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -42,6 +44,8 @@ exports.AppModule = AppModule = __decorate([
             payments_module_1.PaymentsModule,
             notifications_module_1.NotificationsModule,
             documents_module_1.DocumentsModule,
+            auth_module_1.AuthModule,
+            clients_module_1.ClientsModule,
         ],
         providers: [
             {

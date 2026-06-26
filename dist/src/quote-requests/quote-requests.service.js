@@ -39,10 +39,25 @@ let QuoteRequestsService = class QuoteRequestsService {
         return quote;
     }
     create(dto) {
-        const { documents, ...rest } = dto;
+        const { documents, signatureData, ...rest } = dto;
+        let signatureUrl = undefined;
+        if (signatureData) {
+            const fs = require('fs');
+            const path = require('path');
+            const signaturesDir = path.join(__dirname, '..', '..', '..', 'uploads', 'signatures');
+            if (!fs.existsSync(signaturesDir)) {
+                fs.mkdirSync(signaturesDir, { recursive: true });
+            }
+            const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
+            const buffer = Buffer.from(base64Data, 'base64');
+            const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
+            fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
+            signatureUrl = `/uploads/signatures/${fileName}`;
+        }
         const data = {
             ...rest,
             status: "NEW",
+            signatureUrl,
             payload: rest.payload,
             documents: documents?.length
                 ? {
@@ -58,6 +73,75 @@ let QuoteRequestsService = class QuoteRequestsService {
         };
         return this.prisma.quoteRequest.create({
             data,
+            include: {
+                documents: true,
+            },
+        });
+    }
+    async createDraft(dto) {
+        const client = await this.prisma.client.upsert({
+            where: { phone: dto.phone },
+            update: {
+                fullName: dto.fullName || undefined,
+                email: dto.email || undefined,
+            },
+            create: {
+                phone: dto.phone,
+                fullName: dto.fullName,
+                email: dto.email,
+            }
+        });
+        const data = {
+            fullName: dto.fullName,
+            phone: dto.phone,
+            email: dto.email,
+            status: "DRAFT",
+            client: { connect: { id: client.id } }
+        };
+        return this.prisma.quoteRequest.create({
+            data,
+        });
+    }
+    async update(id, dto) {
+        const { documents, signatureData, ...rest } = dto;
+        let signatureUrl = undefined;
+        if (signatureData) {
+            const fs = require('fs');
+            const path = require('path');
+            const signaturesDir = path.join(__dirname, '..', '..', '..', 'uploads', 'signatures');
+            if (!fs.existsSync(signaturesDir)) {
+                fs.mkdirSync(signaturesDir, { recursive: true });
+            }
+            const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
+            const buffer = Buffer.from(base64Data, 'base64');
+            const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
+            fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
+            signatureUrl = `/uploads/signatures/${fileName}`;
+        }
+        const dataToUpdate = {
+            ...rest,
+            signatureUrl: signatureUrl || undefined,
+            payload: rest.payload ? rest.payload : undefined,
+        };
+        if (rest.selectedOfferId) {
+            dataToUpdate.status = "NEW";
+        }
+        return this.prisma.quoteRequest.update({
+            where: { id },
+            data: {
+                ...dataToUpdate,
+                documents: documents?.length
+                    ? {
+                        create: documents.map((doc) => ({
+                            type: doc.type,
+                            filename: doc.filename,
+                            url: doc.url,
+                            mimeType: doc.mimeType,
+                            size: doc.size,
+                        })),
+                    }
+                    : undefined,
+            },
             include: {
                 documents: true,
             },

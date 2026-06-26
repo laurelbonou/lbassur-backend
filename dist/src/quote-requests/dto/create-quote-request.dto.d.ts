@@ -17,4 +17,5 @@ export declare class CreateQuoteRequestDto {
         mimeType: string;
         size: number;
     }[];
+    signatureData?: string;
 }

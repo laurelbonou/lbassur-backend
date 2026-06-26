@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Param, UseGuards, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Body, Controller, Get, Post, Patch, Param, UseGuards, NotFoundException, BadRequestException } from "@nestjs/common";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { QuoteRequestsService } from "./quote-requests.service";
@@ -27,9 +27,19 @@ export class QuoteRequestsController {
     return this.quoteRequestsService.findOne(id);
   }
 
+  @Post("draft")
+  createDraft(@Body() dto: CreateQuoteRequestDto) {
+    return this.quoteRequestsService.createDraft(dto);
+  }
+
   @Post()
   create(@Body() dto: CreateQuoteRequestDto) {
     return this.quoteRequestsService.create(dto);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() dto: any) { // using any for now, could use UpdateQuoteRequestDto
+    return this.quoteRequestsService.update(id, dto);
   }
 
   @Post(":id/send-to-insurer")

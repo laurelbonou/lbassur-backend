@@ -38,6 +38,7 @@ export declare class QuoteRequestsController {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.LeadStatus;
         category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        clientId: string | null;
         fullName: string;
         email: string | null;
         company: string | null;
@@ -48,6 +49,7 @@ export declare class QuoteRequestsController {
         policyNumber: string | null;
         receiptUrl: string | null;
         contractUrl: string | null;
+        signatureUrl: string | null;
     })[]>;
     findOne(id: string): Promise<{
         payment: {
@@ -78,6 +80,7 @@ export declare class QuoteRequestsController {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.LeadStatus;
         category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        clientId: string | null;
         fullName: string;
         email: string | null;
         company: string | null;
@@ -88,6 +91,28 @@ export declare class QuoteRequestsController {
         policyNumber: string | null;
         receiptUrl: string | null;
         contractUrl: string | null;
+        signatureUrl: string | null;
+    }>;
+    createDraft(dto: CreateQuoteRequestDto): Promise<{
+        phone: string;
+        insuranceType: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LeadStatus;
+        category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        clientId: string | null;
+        fullName: string;
+        email: string | null;
+        company: string | null;
+        budget: import("@prisma/client/runtime/library").Decimal | null;
+        selectedOfferId: string | null;
+        message: string | null;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
+        signatureUrl: string | null;
     }>;
     create(dto: CreateQuoteRequestDto): import(".prisma/client").Prisma.Prisma__QuoteRequestClient<{
         documents: {
@@ -108,6 +133,7 @@ export declare class QuoteRequestsController {
         updatedAt: Date;
         status: import(".prisma/client").$Enums.LeadStatus;
         category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        clientId: string | null;
         fullName: string;
         email: string | null;
         company: string | null;
@@ -118,7 +144,40 @@ export declare class QuoteRequestsController {
         policyNumber: string | null;
         receiptUrl: string | null;
         contractUrl: string | null;
+        signatureUrl: string | null;
     }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
+    update(id: string, dto: any): Promise<{
+        documents: {
+            id: string;
+            createdAt: Date;
+            type: string;
+            url: string;
+            quoteRequestId: string;
+            filename: string;
+            mimeType: string;
+            size: number;
+        }[];
+    } & {
+        phone: string;
+        insuranceType: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import(".prisma/client").$Enums.LeadStatus;
+        category: import(".prisma/client").$Enums.InsuranceCategory | null;
+        clientId: string | null;
+        fullName: string;
+        email: string | null;
+        company: string | null;
+        budget: import("@prisma/client/runtime/library").Decimal | null;
+        selectedOfferId: string | null;
+        message: string | null;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
+        policyNumber: string | null;
+        receiptUrl: string | null;
+        contractUrl: string | null;
+        signatureUrl: string | null;
+    }>;
     sendToInsurer(id: string): Promise<{
         success: boolean;
         quote: {
@@ -129,6 +188,7 @@ export declare class QuoteRequestsController {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.LeadStatus;
             category: import(".prisma/client").$Enums.InsuranceCategory | null;
+            clientId: string | null;
             fullName: string;
             email: string | null;
             company: string | null;
@@ -139,6 +199,7 @@ export declare class QuoteRequestsController {
             policyNumber: string | null;
             receiptUrl: string | null;
             contractUrl: string | null;
+            signatureUrl: string | null;
         };
     }>;
     finalizeContract(id: string, policyNumber: string): Promise<{
@@ -152,6 +213,7 @@ export declare class QuoteRequestsController {
             updatedAt: Date;
             status: import(".prisma/client").$Enums.LeadStatus;
             category: import(".prisma/client").$Enums.InsuranceCategory | null;
+            clientId: string | null;
             fullName: string;
             email: string | null;
             company: string | null;
@@ -162,6 +224,7 @@ export declare class QuoteRequestsController {
             policyNumber: string | null;
             receiptUrl: string | null;
             contractUrl: string | null;
+            signatureUrl: string | null;
         };
     }>;
     verifyContract(id: string): Promise<{

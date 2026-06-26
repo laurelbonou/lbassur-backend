@@ -16,10 +16,10 @@ export class PaymentsController {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Post("simulate")
-  async simulatePayment(@Body() dto: SimulatePaymentDto) {
-    if (!dto.quoteRequestId || !dto.method) {
-      throw new BadRequestException("quoteRequestId and method are required");
+  @Post("initialize")
+  async initializePayment(@Body() dto: SimulatePaymentDto) {
+    if (!dto.quoteRequestId) {
+      throw new BadRequestException("quoteRequestId is required");
     }
 
     const quote = await this.prisma.quoteRequest.findUnique({
@@ -27,54 +27,91 @@ export class PaymentsController {
       include: { payment: true },
     });
 
-    if (!quote) {
-      throw new NotFoundException("QuoteRequest not found");
+    if (!quote) throw new NotFoundException("QuoteRequest not found");
+    if (quote.payment && quote.payment.status === "SUCCESS") {
+      throw new BadRequestException("Payment already completed for this quote");
     }
 
-    if (quote.payment) {
-      throw new BadRequestException("Payment already exists for this quote");
-    }
-
-    // Simulate payment delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Determine amount based on budget or premium
     let amount = quote.budget || 0;
     if (!amount && quote.payload && typeof quote.payload === "object" && "price" in quote.payload) {
       amount = Number(quote.payload.price) || 0;
     }
 
-    const payment = await this.prisma.payment.create({
-      data: {
+    const reference = `LB-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+    // Create or update pending payment
+    const payment = await this.prisma.payment.upsert({
+      where: { quoteRequestId: quote.id },
+      create: {
         quoteRequestId: quote.id,
         amount,
-        method: dto.method,
-        status: "SUCCESS",
-        reference: `LB-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        method: dto.method || "FEEXPAY",
+        status: "PENDING",
+        reference,
       },
+      update: {
+        amount,
+        reference,
+        status: "PENDING",
+      }
     });
 
-    const receiptUrl = await this.documentsService.generateReceipt(quote, payment);
-
-    // Update QuoteRequest status and receiptUrl
-    await this.prisma.quoteRequest.update({
-      where: { id: quote.id },
-      data: { 
-        status: "PROCESSING",
-        receiptUrl 
-      },
-    });
-
-    // Notify client and admin
-    // Get admin emails (for now a default or from env)
-    const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
-    await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl);
-    await this.notificationsService.notifyAdminNewQuote(adminEmail, quote.id);
+    // FeexPay URL generation
+    const shopId = process.env.FEEXPAY_SHOP_ID || "MOCK_SHOP_ID";
+    // We mock the FeexPay URL for Sandbox. In prod, you may need a server-to-server request.
+    const feexPayUrl = `https://api.feexpay.me/pay?shop_id=${shopId}&amount=${amount}&reference=${reference}&callback_info=${quote.id}`;
 
     return {
       success: true,
-      payment,
-      receiptUrl
+      paymentUrl: feexPayUrl,
+      reference,
     };
+  }
+
+  @Post("webhook")
+  async feexpayWebhook(@Body() body: any) {
+    // Expected FeexPay Webhook payload:
+    // { reference: string, status: "SUCCESS" | "FAILED", amount: number, ... }
+    const { reference, status } = body;
+
+    if (!reference) throw new BadRequestException("Missing reference");
+
+    const payment = await this.prisma.payment.findUnique({
+      where: { reference },
+      include: { quoteRequest: true },
+    });
+
+    if (!payment) throw new NotFoundException("Payment not found");
+    if (payment.status === "SUCCESS") return { received: true }; // Already processed
+
+    if (status === "SUCCESS" || status === "SUCCESSFUL" || status === "COMPLETED") {
+      // Finalize payment
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: "SUCCESS" }
+      });
+
+      const quote = payment.quoteRequest;
+      const receiptUrl = await this.documentsService.generateReceipt(quote, payment);
+
+      await this.prisma.quoteRequest.update({
+        where: { id: quote.id },
+        data: { 
+          status: "PROCESSING",
+          receiptUrl 
+        },
+      });
+
+      const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
+      await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl);
+      await this.notificationsService.notifyAdminNewQuote(adminEmail, quote.id);
+    } else {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED" }
+      });
+    }
+
+    return { received: true };
   }
 }
