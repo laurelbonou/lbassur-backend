@@ -72,14 +72,32 @@ export class PaymentsController {
   async feexpayWebhook(@Body() body: any) {
     // Expected FeexPay Webhook payload:
     // { reference: string, status: "SUCCESS" | "FAILED", amount: number, ... }
-    const { reference, status } = body;
-
+    const { reference, status, customId, callback_info } = body;
+    
     if (!reference) throw new BadRequestException("Missing reference");
 
-    const payment = await this.prisma.payment.findUnique({
+    const quoteId = customId || callback_info || body.custom_id;
+
+    let payment = await this.prisma.payment.findUnique({
       where: { reference },
       include: { quoteRequest: true },
     });
+
+    if (!payment && quoteId) {
+      const quote = await this.prisma.quoteRequest.findUnique({ where: { id: quoteId } });
+      if (quote) {
+        payment = await this.prisma.payment.create({
+          data: {
+            quoteRequestId: quote.id,
+            amount: quote.budget || 0,
+            method: "FEEXPAY",
+            status: "PENDING",
+            reference: reference,
+          },
+          include: { quoteRequest: true }
+        });
+      }
+    }
 
     if (!payment) throw new NotFoundException("Payment not found");
     if (payment.status === "SUCCESS") return { received: true }; // Already processed
