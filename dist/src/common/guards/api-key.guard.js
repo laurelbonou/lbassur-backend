@@ -19,6 +19,7 @@ let ApiKeyGuard = class ApiKeyGuard {
         if (!apiKey || apiKey !== expected) {
             throw new common_1.UnauthorizedException("Invalid or missing API key");
         }
+        request['user'] = { role: 'ADMIN' };
         return true;
     }
 };

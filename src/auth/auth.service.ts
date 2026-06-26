@@ -35,9 +35,16 @@ export class AuthService {
       throw new UnauthorizedException("Ce compte n'a pas de mot de passe. Veuillez finaliser votre inscription.");
     }
 
-    const payload = { sub: client.id, phone: client.phone };
+    const payload = { sub: client.id, phone: client.phone, role: 'CLIENT' };
+    const access_token = await this.jwtService.signAsync(payload);
+    const refresh_token = await this.jwtService.signAsync(payload, {
+      secret: process.env.REFRESH_TOKEN_SECRET as string,
+      expiresIn: (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as any,
+    });
+
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token,
+      refresh_token,
       client: {
         id: client.id,
         phone: client.phone,
@@ -73,14 +80,48 @@ export class AuthService {
       });
     }
 
-    const payload = { sub: client.id, phone: client.phone };
+    const payload = { sub: client.id, phone: client.phone, role: 'CLIENT' };
+    const access_token = await this.jwtService.signAsync(payload);
+    const refresh_token = await this.jwtService.signAsync(payload, {
+      secret: process.env.REFRESH_TOKEN_SECRET as string,
+      expiresIn: (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as any,
+    });
+
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token,
+      refresh_token,
       client: {
         id: client.id,
         phone: client.phone,
         fullName: client.fullName,
       }
     };
+  }
+
+  async refresh(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.REFRESH_TOKEN_SECRET as string,
+      });
+
+      const client = await this.prisma.client.findUnique({ where: { id: payload.sub } });
+      if (!client) {
+        throw new UnauthorizedException('Client not found');
+      }
+
+      const newPayload = { sub: client.id, phone: client.phone, role: 'CLIENT' };
+      const access_token = await this.jwtService.signAsync(newPayload);
+      const refresh_token = await this.jwtService.signAsync(newPayload, {
+        secret: process.env.REFRESH_TOKEN_SECRET as string,
+        expiresIn: (process.env.REFRESH_TOKEN_EXPIRES_IN || '30d') as any,
+      });
+
+      return {
+        access_token,
+        refresh_token,
+      };
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 }

@@ -9,7 +9,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{ headers: Record<string, string> }>();
+    const request = context.switchToHttp().getRequest<any>();
     const apiKey = request.headers["x-api-key"];
     const expected = process.env.ADMIN_API_KEY;
 
@@ -20,6 +20,9 @@ export class ApiKeyGuard implements CanActivate {
     if (!apiKey || apiKey !== expected) {
       throw new UnauthorizedException("Invalid or missing API key");
     }
+
+    // Attach mock admin user so RolesGuard works smoothly
+    request['user'] = { role: 'ADMIN' };
 
     return true;
   }
