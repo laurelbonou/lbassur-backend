@@ -8,8 +8,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
 const core_1 = require("@nestjs/core");
+const nestjs_pino_1 = require("nestjs-pino");
+const env_validation_1 = require("./config/env.validation");
 const health_module_1 = require("./health/health.module");
 const insurers_module_1 = require("./insurers/insurers.module");
 const offers_module_1 = require("./offers/offers.module");
@@ -29,6 +32,21 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                validationSchema: env_validation_1.envValidationSchema,
+                validationOptions: {
+                    abortEarly: true,
+                },
+            }),
+            nestjs_pino_1.LoggerModule.forRoot({
+                pinoHttp: {
+                    level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+                    transport: process.env.NODE_ENV !== 'production'
+                        ? { target: 'pino-pretty', options: { colorize: true } }
+                        : undefined,
+                },
+            }),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
                     limit: 100,
