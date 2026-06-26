@@ -2,10 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class QuoteRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   findAll() {
     return this.prisma.quoteRequest.findMany({
@@ -97,9 +101,17 @@ export class QuoteRequestsService {
       client: { connect: { id: client.id } }
     };
 
-    return this.prisma.quoteRequest.create({
+    const draft = await this.prisma.quoteRequest.create({
       data,
     });
+
+    // Notify admin
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@lbassur.bj";
+    this.notificationsService.notifyAdminAbandonedCart(adminEmail, draft).catch(err => {
+      console.error("Failed to notify admin of abandoned cart:", err);
+    });
+
+    return draft;
   }
 
   async update(id: string, dto: Partial<CreateQuoteRequestDto>) {

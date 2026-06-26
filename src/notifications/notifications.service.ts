@@ -70,6 +70,33 @@ export class NotificationsService {
     // Appel désactivé: await this.sendWhatsApp(process.env.ADMIN_PHONE || '+22900000000', message);
   }
 
+  async notifyAdminAbandonedCart(adminEmail: string, clientDetails: any) {
+    const htmlMessage = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #e74c3c; padding: 20px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">PANIER ABANDONNÉ</h1>
+        </div>
+        <div style="padding: 30px; background-color: #ffffff;">
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Bonjour,</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">
+            Un prospect vient de commencer une demande de souscription mais ne l'a pas encore terminée. 
+            C'est le moment idéal pour faire preuve de réactivité et l'appeler !
+          </p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #e74c3c; margin: 20px 0;">
+            <p style="margin: 0; font-size: 16px;"><strong>Nom :</strong> ${clientDetails.fullName || 'Non renseigné'}</p>
+            <p style="margin: 10px 0 0; font-size: 16px;"><strong>Téléphone :</strong> <a href="tel:${clientDetails.phone}" style="color: #e74c3c; font-weight: bold; text-decoration: none;">${clientDetails.phone}</a></p>
+            ${clientDetails.email ? `<p style="margin: 10px 0 0; font-size: 16px;"><strong>Email :</strong> ${clientDetails.email}</p>` : ''}
+          </div>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">
+            Vous pouvez consulter ce dossier dans votre tableau de bord sous l'onglet <strong>Souscriptions</strong>.
+          </p>
+        </div>
+      </div>
+    `;
+    const textMessage = `Nouveau panier abandonné !\n\nNom: ${clientDetails.fullName}\nTéléphone: ${clientDetails.phone}`;
+    await this.sendEmail(adminEmail, `ALERTE - Panier Abandonné : ${clientDetails.phone}`, textMessage, htmlMessage);
+  }
+
   async sendQuoteToInsurer(insurerEmail: string, clientDetails: any, documents: any[], summaryPdfUrl?: string) {
     const textMessage = `Bonjour,\n\nVeuillez trouver ci-joint une nouvelle demande de souscription pour le client ${clientDetails.fullName}.\n\nMerci de nous générer le numéro de police correspondant.\n\nCordialement,\nLBAssur`;
     

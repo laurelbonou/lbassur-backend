@@ -1,9 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 export declare class QuoteRequestsService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly notificationsService;
+    constructor(prisma: PrismaService, notificationsService: NotificationsService);
     findAll(): Prisma.PrismaPromise<({
         payment: {
             id: string;

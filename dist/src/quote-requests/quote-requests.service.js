@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.QuoteRequestsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const notifications_service_1 = require("../notifications/notifications.service");
 let QuoteRequestsService = class QuoteRequestsService {
     prisma;
-    constructor(prisma) {
+    notificationsService;
+    constructor(prisma, notificationsService) {
         this.prisma = prisma;
+        this.notificationsService = notificationsService;
     }
     findAll() {
         return this.prisma.quoteRequest.findMany({
@@ -98,9 +101,14 @@ let QuoteRequestsService = class QuoteRequestsService {
             status: "DRAFT",
             client: { connect: { id: client.id } }
         };
-        return this.prisma.quoteRequest.create({
+        const draft = await this.prisma.quoteRequest.create({
             data,
         });
+        const adminEmail = process.env.ADMIN_EMAIL || "admin@lbassur.bj";
+        this.notificationsService.notifyAdminAbandonedCart(adminEmail, draft).catch(err => {
+            console.error("Failed to notify admin of abandoned cart:", err);
+        });
+        return draft;
     }
     async update(id, dto) {
         const { documents, signatureData, ...rest } = dto;
@@ -151,6 +159,7 @@ let QuoteRequestsService = class QuoteRequestsService {
 exports.QuoteRequestsService = QuoteRequestsService;
 exports.QuoteRequestsService = QuoteRequestsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        notifications_service_1.NotificationsService])
 ], QuoteRequestsService);
 //# sourceMappingURL=quote-requests.service.js.map
