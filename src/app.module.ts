@@ -3,6 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
+import { CacheModule } from "@nestjs/cache-manager";
+import { PrometheusModule } from "@willsoto/nestjs-prometheus";
 import { envValidationSchema } from "./config/env.validation";
 import { HealthModule } from "./health/health.module";
 import { InsurersModule } from "./insurers/insurers.module";
@@ -39,6 +41,16 @@ import { ClientsModule } from './clients/clients.module';
       ttl: 60000,
       limit: 100, // 100 requests per minute max globally
     }]),
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60000, // 1 minute default cache
+      max: 100, // maximum number of items in cache
+    }),
+    PrometheusModule.register({
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
     PrismaModule,
     HealthModule,
     InsurersModule,

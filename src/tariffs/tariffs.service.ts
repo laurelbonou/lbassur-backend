@@ -4,12 +4,16 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateTariffRuleDto } from "./dto/create-tariff-rule.dto";
 import { QueryTariffRulesDto } from "./dto/query-tariff-rules.dto";
 import { UpdateTariffRuleDto } from "./dto/update-tariff-rule.dto";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Injectable()
 export class TariffsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(query: QueryTariffRulesDto) {
+  async findAll(query: QueryTariffRulesDto & PaginationQueryDto) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
     const and: Prisma.TariffRuleWhereInput[] = [];
 
     if (query.category) and.push({ category: query.category });
@@ -22,15 +26,32 @@ export class TariffsService {
     if (query.active === "true") and.push({ active: true });
     if (query.active === "false") and.push({ active: false });
 
-    return this.prisma.tariffRule.findMany({
-      where: { AND: and },
-      include: {
-        insurer: true,
-        offer: true,
-        insuranceType: true,
+    const where: Prisma.TariffRuleWhereInput = and.length > 0 ? { AND: and } : {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.tariffRule.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          insurer: true,
+          offer: true,
+          insuranceType: true,
+        },
+        orderBy: { price: "asc" },
+      }),
+      this.prisma.tariffRule.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      orderBy: { price: "asc" },
-    });
+    };
   }
 
   create(dto: CreateTariffRuleDto) {

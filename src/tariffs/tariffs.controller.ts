@@ -1,16 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from "@nestjs/common";
+import { CacheInterceptor } from "@nestjs/cache-manager";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { CreateTariffRuleDto } from "./dto/create-tariff-rule.dto";
 import { QueryTariffRulesDto } from "./dto/query-tariff-rules.dto";
 import { UpdateTariffRuleDto } from "./dto/update-tariff-rule.dto";
 import { TariffsService } from "./tariffs.service";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Controller("tariffs")
 export class TariffsController {
   constructor(private readonly tariffsService: TariffsService) {}
 
   @Get()
-  findAll(@Query() query: QueryTariffRulesDto) {
+  @UseInterceptors(CacheInterceptor)
+  findAll(@Query() query: QueryTariffRulesDto & PaginationQueryDto) {
     return this.tariffsService.findAll(query);
   }
 

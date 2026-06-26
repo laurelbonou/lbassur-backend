@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Patch, Param, UseGuards, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, Patch, UseGuards, Query, NotFoundException, BadRequestException } from "@nestjs/common";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { QuoteRequestsService } from "./quote-requests.service";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import { DocumentsService } from "../documents/documents.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -17,8 +18,8 @@ export class QuoteRequestsController {
 
   @Get()
   @UseGuards(ApiKeyGuard)
-  findAll() {
-    return this.quoteRequestsService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.quoteRequestsService.findAll(query);
   }
 
   @Get(":id")

@@ -5,6 +5,7 @@ import { extname, join } from "path";
 import { Throttle } from "@nestjs/throttler";
 import { Response } from "express";
 import * as fs from "fs";
+import { MagicNumberValidationPipe } from "../common/pipes/file-validation.pipe";
 
 @Controller("uploads")
 export class UploadsController {
@@ -33,7 +34,7 @@ export class UploadsController {
       },
     })
   )
-  uploadFiles(@UploadedFiles() files: Express.Multer.File[]) {
+  uploadFiles(@UploadedFiles(MagicNumberValidationPipe) files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException("Aucun fichier n'a été fourni.");
     }

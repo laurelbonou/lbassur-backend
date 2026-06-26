@@ -4,12 +4,16 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateOfferDto } from "./dto/create-offer.dto";
 import { QueryOffersDto } from "./dto/query-offers.dto";
 import { UpdateOfferDto } from "./dto/update-offer.dto";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Injectable()
 export class OffersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(query: QueryOffersDto) {
+  async findAll(query: QueryOffersDto & PaginationQueryDto) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
     const and: Prisma.OfferWhereInput[] = [];
 
     if (query.category) and.push({ category: query.category });
@@ -33,17 +37,34 @@ export class OffersService {
           ? { coverageAmount: "desc" }
           : { premium: "asc" };
 
-    return this.prisma.offer.findMany({
-      where: {
-        status: query.status ?? "ACTIVE",
-        AND: and,
+    const where: Prisma.OfferWhereInput = {
+      status: query.status ?? "ACTIVE",
+      AND: and.length > 0 ? and : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.offer.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          insurer: true,
+          insuranceType: true,
+        },
+        orderBy,
+      }),
+      this.prisma.offer.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      include: {
-        insurer: true,
-        insuranceType: true,
-      },
-      orderBy,
-    });
+    };
   }
 
   async findOne(id: string) {

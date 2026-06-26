@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from "@nestjs/common";
+import { CacheInterceptor } from "@nestjs/cache-manager";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { CreateOfferDto } from "./dto/create-offer.dto";
 import { QueryOffersDto } from "./dto/query-offers.dto";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 import { UpdateOfferDto } from "./dto/update-offer.dto";
 import { OffersService } from "./offers.service";
 
@@ -10,11 +12,13 @@ export class OffersController {
   constructor(private readonly offersService: OffersService) {}
 
   @Get()
-  findAll(@Query() query: QueryOffersDto) {
+  @UseInterceptors(CacheInterceptor)
+  findAll(@Query() query: QueryOffersDto & PaginationQueryDto) {
     return this.offersService.findAll(query);
   }
 
   @Get(":id")
+  @UseInterceptors(CacheInterceptor)
   findOne(@Param("id") id: string) {
     return this.offersService.findOne(id);
   }

@@ -3,20 +3,37 @@ import { PrismaService } from "../prisma/prisma.service";
 import { slugify } from "../common/slugify";
 import { CreateInsurerDto } from "./dto/create-insurer.dto";
 import { UpdateInsurerDto } from "./dto/update-insurer.dto";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Injectable()
 export class InsurersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.insurer.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        _count: {
-          select: { offers: true },
+  async findAll(query: PaginationQueryDto) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.insurer.findMany({
+        skip,
+        take: limit,
+        orderBy: { name: "asc" },
+        include: {
+          _count: { select: { offers: true } },
         },
+      }),
+      this.prisma.insurer.count(),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findBySlug(slug: string) {

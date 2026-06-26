@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { NotificationsService } from "../notifications/notifications.service";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Injectable()
 export class QuoteRequestsService {
@@ -11,14 +12,32 @@ export class QuoteRequestsService {
     private readonly notificationsService: NotificationsService
   ) {}
 
-  findAll() {
-    return this.prisma.quoteRequest.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        documents: true,
-        payment: true,
-      }
-    });
+  async findAll(query: PaginationQueryDto) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.quoteRequest.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          documents: true,
+          payment: true,
+        }
+      }),
+      this.prisma.quoteRequest.count(),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
@@ -29,7 +48,7 @@ export class QuoteRequestsService {
         payment: true,
       }
     });
-    if (!quote) throw new Error("Quote not found");
+    if (!quote) throw new NotFoundException("Quote not found");
     return quote;
   }
 
@@ -48,6 +67,11 @@ export class QuoteRequestsService {
       
       const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
       const buffer = Buffer.from(base64Data, 'base64');
+
+      if (buffer.length < 4 || buffer.toString('hex', 0, 4).toUpperCase() !== '89504E47') {
+        throw new BadRequestException('Format de signature invalide. Seul le PNG est autorisé.');
+      }
+
       const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
       fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
       signatureUrl = `/uploads/signatures/${fileName}`;
@@ -128,6 +152,11 @@ export class QuoteRequestsService {
       
       const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
       const buffer = Buffer.from(base64Data, 'base64');
+
+      if (buffer.length < 4 || buffer.toString('hex', 0, 4).toUpperCase() !== '89504E47') {
+        throw new BadRequestException('Format de signature invalide. Seul le PNG est autorisé.');
+      }
+
       const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
       fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
       signatureUrl = `/uploads/signatures/${fileName}`;
