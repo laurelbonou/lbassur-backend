@@ -56,4 +56,35 @@ export class ClientsController {
   updateClaimStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.clientsService.updateClaimStatus(id, status);
   }
+
+  // --- Profile Change Requests ---
+
+  @Get('me/change-requests')
+  getMyChangeRequests(@Req() req: any) {
+    const clientId = this.getClientId(req);
+    return this.clientsService.getMyChangeRequests(clientId);
+  }
+
+  @Post('me/change-requests')
+  createChangeRequest(@Req() req: any, @Body() body: any) {
+    const clientId = this.getClientId(req);
+    return this.clientsService.createChangeRequest(clientId, body);
+  }
+
+  // Admin endpoints for change requests
+  @Get('change-requests')
+  @UseGuards(ApiKeyGuard)
+  getAllChangeRequests() {
+    return this.clientsService.getAllChangeRequests();
+  }
+
+  @Patch('change-requests/:id/status')
+  @UseGuards(ApiKeyGuard)
+  updateChangeRequestStatus(
+    @Param('id') id: string, 
+    @Body('status') status: string,
+    @Body('adminNote') adminNote?: string
+  ) {
+    return this.clientsService.updateChangeRequestStatus(id, status, adminNote);
+  }
 }

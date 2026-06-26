@@ -48,4 +48,58 @@ export class ClientsService {
       include: { client: true, quoteRequest: true },
     });
   }
+
+  // --- Profile Change Requests ---
+
+  async getMyChangeRequests(clientId: string) {
+    return this.prisma.profileChangeRequest.findMany({
+      where: { clientId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createChangeRequest(clientId: string, dto: any) {
+    return this.prisma.profileChangeRequest.create({
+      data: {
+        clientId,
+        requestedData: dto.requestedData,
+        proofDocumentUrl: dto.proofDocumentUrl,
+        status: 'PENDING',
+      },
+    });
+  }
+
+  // Admin methods for change requests
+  async getAllChangeRequests() {
+    return this.prisma.profileChangeRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { client: true },
+    });
+  }
+
+  async updateChangeRequestStatus(id: string, status: any, adminNote?: string) {
+    const request = await this.prisma.profileChangeRequest.update({
+      where: { id },
+      data: { status, adminNote },
+      include: { client: true },
+    });
+
+    if (status === 'APPROVED' && request.requestedData) {
+      // Apply the changes to the client profile
+      const dataToUpdate = request.requestedData as any;
+      const updatePayload: any = {};
+      if (dataToUpdate.fullName) updatePayload.fullName = dataToUpdate.fullName;
+      if (dataToUpdate.email) updatePayload.email = dataToUpdate.email;
+      if (dataToUpdate.phone) updatePayload.phone = dataToUpdate.phone;
+
+      if (Object.keys(updatePayload).length > 0) {
+        await this.prisma.client.update({
+          where: { id: request.clientId },
+          data: updatePayload,
+        });
+      }
+    }
+
+    return request;
+  }
 }

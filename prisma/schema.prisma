@@ -242,15 +242,16 @@ model AdminUser {
 }
 
 model Client {
-  id           String         @id @default(cuid())
-  phone        String         @unique
-  email        String?        @unique
+  id           String                 @id @default(cuid())
+  phone        String                 @unique
+  email        String?                @unique
   passwordHash String?
   fullName     String?
   quotes       QuoteRequest[]
   claims       Claim[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  changeRequests ProfileChangeRequest[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
 }
 
 model Claim {
@@ -264,6 +265,27 @@ model Claim {
   status         ClaimStatus   @default(PENDING)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ProfileChangeRequest {
+  id               String        @id @default(cuid())
+  clientId         String
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestedData    Json          // Will store e.g., { phone: "...", email: "..." }
+  proofDocumentUrl String
+  status           RequestStatus @default(PENDING)
+  adminNote        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([clientId])
   @@index([status])
