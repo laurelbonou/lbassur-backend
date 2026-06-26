@@ -31,19 +31,28 @@ async function bootstrap() {
     next();
   });
 
-  const frontendUrls = process.env.FRONTEND_URL?.split(",").map((url) => url.trim()).filter(Boolean);
+  const envFrontendUrls = process.env.FRONTEND_URL?.split(",").map((url) => url.trim()).filter(Boolean) || [];
+  
+  // Toujours autoriser ces origines en production pour éviter les erreurs CORS
+  const defaultAllowedOrigins = [
+    "https://lbassur.bj", 
+    "https://www.lbassur.bj", 
+    "http://localhost:3000"
+  ];
+  
+  const frontendUrls = [...new Set([...envFrontendUrls, ...defaultAllowedOrigins])];
   const isProduction = process.env.NODE_ENV === "production";
 
   app.setGlobalPrefix("api/v1");
 
-  if (!frontendUrls?.length && isProduction) {
+  if (!frontendUrls.length && isProduction) {
     pinoLogger.error("FRONTEND_URL is not set — CORS will reject all origins in production!");
-  } else if (!frontendUrls?.length) {
+  } else if (!frontendUrls.length) {
     pinoLogger.warn("FRONTEND_URL is not set — CORS is open to all origins (dev mode only).");
   }
 
   app.enableCors({
-    origin: frontendUrls?.length ? frontendUrls : (isProduction ? false : true),
+    origin: frontendUrls.length ? frontendUrls : (isProduction ? false : true),
     credentials: true,
   });
 
