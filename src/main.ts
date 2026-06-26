@@ -6,7 +6,7 @@ import { AppModule } from "./app.module";
 import helmet from "helmet";
 import { Logger } from "nestjs-pino";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
-import * as compression from "compression";
+import compression from "compression";
 import { v4 as uuidv4 } from "uuid";
 
 async function bootstrap() {
