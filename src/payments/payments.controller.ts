@@ -112,6 +112,12 @@ export class PaymentsController {
       const quote = payment.quoteRequest;
       const receiptUrl = await this.documentsService.generateReceipt(quote, payment);
 
+      // Fetch documents for the quote
+      const fullQuote = await this.prisma.quoteRequest.findUnique({
+        where: { id: quote.id },
+        include: { documents: true },
+      });
+
       await this.prisma.quoteRequest.update({
         where: { id: quote.id },
         data: { 
@@ -123,6 +129,11 @@ export class PaymentsController {
       const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
       await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl);
       await this.notificationsService.notifyAdminNewQuote(adminEmail, quote.id);
+      
+      // Automatically notify insurer after successful payment
+      await this.notificationsService.notifyInsurerAfterPayment(quote, fullQuote?.documents || []).catch(err => {
+        console.error("Failed to notify insurer after payment:", err);
+      });
     } else {
       await this.prisma.payment.update({
         where: { id: payment.id },

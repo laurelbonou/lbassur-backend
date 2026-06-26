@@ -166,4 +166,79 @@ export class NotificationsService {
     }
     // Appel désactivé: await this.sendWhatsApp(clientPhone, message);
   }
+
+  async notifyClientProfileRequestUpdate(clientEmail: string, status: string, adminNote?: string) {
+    if (!clientEmail) return;
+
+    const isApproved = status === 'APPROVED';
+    const subject = isApproved 
+      ? 'Votre demande de modification a été approuvée' 
+      : 'Votre demande de modification a été refusée';
+
+    const htmlMessage = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: ${isApproved ? '#27ae60' : '#e74c3c'}; padding: 20px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">
+            ${isApproved ? 'DEMANDE APPROUVÉE' : 'DEMANDE REFUSÉE'}
+          </h1>
+        </div>
+        <div style="padding: 30px; background-color: #ffffff;">
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Bonjour,</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">
+            ${isApproved 
+              ? 'Votre demande de modification de profil a été examinée et <strong>approuvée</strong>. Vos informations ont été mises à jour.' 
+              : 'Votre demande de modification de profil a été examinée et <strong>refusée</strong>.'}
+          </p>
+          ${adminNote ? `
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid ${isApproved ? '#27ae60' : '#e74c3c'}; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px;"><strong>Commentaire de l'administrateur :</strong></p>
+            <p style="margin: 5px 0 0; font-size: 14px;">${adminNote}</p>
+          </div>` : ''}
+          <p style="font-size: 16px; line-height: 1.5; color: #555; margin-top: 30px;">Cordialement,<br><strong>L'équipe LBAssur</strong></p>
+        </div>
+        <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #888;">© ${new Date().getFullYear()} LBAssur. Tous droits réservés.</div>
+      </div>
+    `;
+    const textMessage = isApproved 
+      ? 'Votre demande de modification de profil a été approuvée. Vos informations ont été mises à jour.'
+      : `Votre demande de modification de profil a été refusée.${adminNote ? ' Motif : ' + adminNote : ''}`;
+
+    await this.sendEmail(clientEmail, subject, textMessage, htmlMessage);
+  }
+
+  async notifyInsurerAfterPayment(quoteDetails: any, documents: any[]) {
+    const insurerEmail = process.env.INSURER_EMAIL || process.env.INSURER_MOCK_EMAIL || 'insurer@example.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'contact@lbassur.bj';
+
+    const htmlMessage = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #000; padding: 20px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">NOUVELLE SOUSCRIPTION PAYÉE</h1>
+        </div>
+        <div style="padding: 30px; background-color: #ffffff;">
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Bonjour,</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Un client vient de finaliser le paiement de sa souscription. Veuillez trouver ci-dessous les détails du dossier :</p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px;"><strong>Client :</strong> ${quoteDetails.fullName}</p>
+            <p style="margin: 5px 0 0; font-size: 14px;"><strong>Téléphone :</strong> ${quoteDetails.phone}</p>
+            ${quoteDetails.email ? `<p style="margin: 5px 0 0; font-size: 14px;"><strong>Email :</strong> ${quoteDetails.email}</p>` : ''}
+            <p style="margin: 5px 0 0; font-size: 14px;"><strong>Type d'assurance :</strong> ${quoteDetails.insuranceType || 'Non spécifié'}</p>
+            <p style="margin: 5px 0 0; font-size: 14px;"><strong>Montant payé :</strong> ${quoteDetails.budget ? Number(quoteDetails.budget).toLocaleString('fr-FR') : '0'} FCFA</p>
+            <p style="margin: 5px 0 0; font-size: 14px;"><strong>ID Dossier :</strong> ${quoteDetails.id}</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Merci de bien vouloir préparer le contrat et le numéro de police correspondants.</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555; margin-top: 30px;">Cordialement,<br><strong>L'équipe LBAssur</strong></p>
+        </div>
+        <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #888;">© ${new Date().getFullYear()} LBAssur. Tous droits réservés.</div>
+      </div>
+    `;
+    const textMessage = `Nouvelle souscription payée - Client: ${quoteDetails.fullName} (${quoteDetails.phone}). Montant: ${quoteDetails.budget || 0} FCFA. ID: ${quoteDetails.id}`;
+
+    // Send to insurer
+    await this.sendEmail(insurerEmail, `Souscription Payée - ${quoteDetails.fullName}`, textMessage, htmlMessage);
+    // Also CC admin
+    if (adminEmail !== insurerEmail) {
+      await this.sendEmail(adminEmail, `[COPIE] Souscription Payée - ${quoteDetails.fullName}`, textMessage, htmlMessage);
+    }
+  }
 }

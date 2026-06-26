@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getMyQuotes(clientId: string) {
     return this.prisma.quoteRequest.findMany({
@@ -98,6 +102,14 @@ export class ClientsService {
           data: updatePayload,
         });
       }
+    }
+
+    // Notify client by email
+    const clientEmail = (request as any).client?.email;
+    if (clientEmail) {
+      this.notificationsService.notifyClientProfileRequestUpdate(clientEmail, status, adminNote).catch(err => {
+        console.error("Failed to notify client of profile request update:", err);
+      });
     }
 
     return request;
