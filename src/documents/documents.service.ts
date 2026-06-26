@@ -152,4 +152,76 @@ export class DocumentsService {
       }
     });
   }
+
+  async generateQuoteSummaryPdf(quoteRequest: any): Promise<string> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const fileName = `summary-${quoteRequest.id}-${Date.now()}.pdf`;
+        const filePath = path.join(this.uploadsDir, 'contracts', fileName);
+        const doc = new PDFDocument({ margin: 50 });
+
+        const stream = fs.createWriteStream(filePath);
+        doc.pipe(stream);
+
+        // Header
+        doc.fontSize(20).text('FICHE DE COTATION', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(`LBAssur - Courtier en Assurance`, { align: 'center' });
+        doc.text(`Date de demande : ${new Date(quoteRequest.createdAt || Date.now()).toLocaleDateString('fr-FR')}`, { align: 'center' });
+        doc.moveDown(2);
+
+        // Client Info
+        doc.fontSize(14).text('Informations du Client', { underline: true });
+        doc.fontSize(12).moveDown(0.5);
+        doc.text(`Nom complet : ${quoteRequest.fullName}`);
+        doc.text(`Téléphone : ${quoteRequest.phone}`);
+        if (quoteRequest.email) doc.text(`Email : ${quoteRequest.email}`);
+        doc.moveDown();
+
+        // Details (Payload)
+        doc.fontSize(14).text('Détails de la demande', { underline: true });
+        doc.fontSize(12).moveDown(0.5);
+        doc.text(`Type d'assurance : ${quoteRequest.insuranceType}`);
+        doc.moveDown(0.5);
+
+        if (quoteRequest.payload && typeof quoteRequest.payload === 'object') {
+          for (const [key, value] of Object.entries(quoteRequest.payload)) {
+            const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+            const formattedValue = Array.isArray(value) ? value.join(', ') : value;
+            doc.text(`${formattedKey} : ${formattedValue}`);
+          }
+        }
+        doc.moveDown(2);
+
+        // Add Signature if it exists
+        if (quoteRequest.signatureUrl) {
+          try {
+             const relativeSignaturePath = quoteRequest.signatureUrl.replace(/^\//, '');
+             const signaturePath = path.join(__dirname, '..', '..', '..', relativeSignaturePath);
+             if (fs.existsSync(signaturePath)) {
+               doc.text('Signature de l\'assuré :', 50, doc.y, { underline: true });
+               doc.moveDown(0.5);
+               doc.image(signaturePath, 50, doc.y, { fit: [150, 80] });
+             }
+          } catch (e) {
+             this.logger.error('Could not embed signature', e);
+          }
+        }
+
+        doc.end();
+
+        stream.on('finish', () => {
+          resolve(`/uploads/contracts/${fileName}`);
+        });
+
+        stream.on('error', (err) => {
+          reject(err);
+        });
+
+      } catch (error) {
+        this.logger.error('Error generating summary PDF:', error);
+        reject(error);
+      }
+    });
+  }
 }

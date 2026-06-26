@@ -62,8 +62,9 @@ let QuoteRequestsController = class QuoteRequestsController {
         if (!offer || !offer.insurer) {
             throw new common_1.BadRequestException("Insurer not found for this quote");
         }
+        const summaryPdfUrl = await this.documentsService.generateQuoteSummaryPdf(quote);
         const insurerEmail = process.env.INSURER_MOCK_EMAIL || "insurer@example.com";
-        await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents);
+        await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents, summaryPdfUrl);
         const updated = await this.prisma.quoteRequest.update({
             where: { id },
             data: { status: "INSURER_PENDING" }

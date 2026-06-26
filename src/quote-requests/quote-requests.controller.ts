@@ -63,9 +63,12 @@ export class QuoteRequestsController {
       throw new BadRequestException("Insurer not found for this quote");
     }
 
+    // Generate Summary PDF (Fiche de Cotation)
+    const summaryPdfUrl = await this.documentsService.generateQuoteSummaryPdf(quote);
+
     // Email insurer
     const insurerEmail = process.env.INSURER_MOCK_EMAIL || "insurer@example.com";
-    await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents);
+    await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents, summaryPdfUrl);
 
     // Update status
     const updated = await this.prisma.quoteRequest.update({

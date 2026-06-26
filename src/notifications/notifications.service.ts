@@ -70,16 +70,61 @@ export class NotificationsService {
     // Appel désactivé: await this.sendWhatsApp(process.env.ADMIN_PHONE || '+22900000000', message);
   }
 
-  async sendQuoteToInsurer(insurerEmail: string, clientDetails: any, documents: any[]) {
-    const message = `Bonjour,\n\nVeuillez trouver ci-joint une nouvelle demande de souscription pour le client ${clientDetails.fullName}.\n\nMerci de nous générer le numéro de police correspondant.\n\nCordialement,\nLBAssur`;
+  async sendQuoteToInsurer(insurerEmail: string, clientDetails: any, documents: any[], summaryPdfUrl?: string) {
+    const textMessage = `Bonjour,\n\nVeuillez trouver ci-joint une nouvelle demande de souscription pour le client ${clientDetails.fullName}.\n\nMerci de nous générer le numéro de police correspondant.\n\nCordialement,\nLBAssur`;
     
-    // Attachments formatted for nodemailer
-    const attachments = documents.map(doc => ({
-      filename: doc.filename,
-      path: doc.url // Assuming URL is accessible or it's a local path
-    }));
+    const htmlMessage = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #000; padding: 20px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">LBASSUR</h1>
+        </div>
+        <div style="padding: 30px; background-color: #ffffff;">
+          <h2 style="color: #000; font-size: 20px; margin-top: 0;">Nouvelle Demande de Souscription</h2>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">Bonjour,</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">
+            Une nouvelle demande de souscription a été finalisée par le client <strong>${clientDetails.fullName}</strong>.
+            Veuillez trouver ci-joint la <strong>Fiche de Cotation</strong> résumant les informations du client, ainsi que les documents justificatifs associés.
+          </p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #000; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px;"><strong>ID Dossier :</strong> ${clientDetails.id}</p>
+            <p style="margin: 5px 0 0; font-size: 14px;"><strong>Type d'assurance :</strong> ${clientDetails.insuranceType || 'Non spécifié'}</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5; color: #555;">
+            Merci de bien vouloir générer le contrat et le numéro de police correspondants, puis de nous les faire parvenir.
+          </p>
+          <p style="font-size: 16px; line-height: 1.5; color: #555; margin-top: 30px;">
+            Cordialement,<br>
+            <strong>L'équipe LBAssur</strong>
+          </p>
+        </div>
+        <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #888;">
+          © ${new Date().getFullYear()} LBAssur. Tous droits réservés.
+        </div>
+      </div>
+    `;
 
-    await this.sendEmail(insurerEmail, `Demande de Souscription - ${clientDetails.fullName}`, message, undefined, attachments);
+    const path = require('path');
+    const backendRoot = path.join(__dirname, '..', '..', '..');
+
+    // Attachments formatted for nodemailer
+    const attachments = documents.map(doc => {
+      // Resolve path
+      const relativePath = doc.url.replace(/^\//, '');
+      return {
+        filename: doc.filename,
+        path: path.join(backendRoot, relativePath)
+      };
+    });
+
+    if (summaryPdfUrl) {
+      const relativeSummaryPath = summaryPdfUrl.replace(/^\//, '');
+      attachments.push({
+        filename: `Fiche_de_Cotation_${clientDetails.fullName.replace(/\s+/g, '_')}.pdf`,
+        path: path.join(backendRoot, relativeSummaryPath)
+      });
+    }
+
+    await this.sendEmail(insurerEmail, `Demande de Souscription - ${clientDetails.fullName}`, textMessage, htmlMessage, attachments);
   }
 
   async sendFinalContractToClient(clientEmail: string, clientPhone: string, contractUrl: string) {
