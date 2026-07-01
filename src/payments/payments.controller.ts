@@ -2,6 +2,7 @@ import { Controller, Post, Body, BadRequestException, NotFoundException, UseGuar
 import { PrismaService } from "../prisma/prisma.service";
 import { DocumentsService } from "../documents/documents.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { BrokersService } from "../brokers/brokers.service";
 import { FeexPayWebhookGuard } from "./guards/feexpay-webhook.guard";
 import { Logger } from "nestjs-pino";
 import { Throttle } from '@nestjs/throttler';
@@ -17,6 +18,7 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
     private readonly documentsService: DocumentsService,
     private readonly notificationsService: NotificationsService,
+    private readonly brokersService: BrokersService,
     private readonly logger: Logger,
   ) {}
 
@@ -149,6 +151,18 @@ export class PaymentsController {
         where: { id: quote.id },
         data: { receiptUrl },
       });
+
+      // ── Commission calculation ──
+      try {
+        await this.brokersService.calculateCommission(
+          payment.id,
+          Number(payment.amount),
+          quote.brokerId || null,
+        );
+        this.logger.log({ paymentId: payment.id, brokerId: quote.brokerId }, 'Commission calculated');
+      } catch (commErr) {
+        this.logger.error({ err: commErr }, 'Failed to calculate commission');
+      }
 
       const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
       await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl).catch(e => this.logger.error(e));

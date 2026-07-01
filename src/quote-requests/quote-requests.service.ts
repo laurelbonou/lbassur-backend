@@ -3,13 +3,15 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { NotificationsService } from "../notifications/notifications.service";
+import { BrokersService } from "../brokers/brokers.service";
 import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Injectable()
 export class QuoteRequestsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly brokersService: BrokersService,
   ) {}
 
   async findAll(query: PaginationQueryDto) {
@@ -52,8 +54,8 @@ export class QuoteRequestsService {
     return quote;
   }
 
-  create(dto: CreateQuoteRequestDto) {
-    const { documents, signatureData, ...rest } = dto;
+  async create(dto: CreateQuoteRequestDto) {
+    const { documents, signatureData, brokerCode, ...rest } = dto;
     let signatureUrl: string | undefined = undefined;
 
     if (signatureData) {
@@ -77,11 +79,30 @@ export class QuoteRequestsService {
       signatureUrl = `/uploads/signatures/${fileName}`;
     }
 
+    // ── Resolve broker if code provided ──
+    let brokerData: { brokerId?: string; brokerCode?: string; platformFee?: number; brokerShare?: number } = {};
+    if (brokerCode) {
+      const broker = await this.brokersService.findOrCreateByCode(brokerCode);
+      const totalAmount = rest.budget || 0;
+      const platformFee = Math.round((totalAmount * Number(broker.platformRate)) / 100);
+      const brokerShare = totalAmount - platformFee;
+      brokerData = {
+        brokerId: broker.id,
+        brokerCode: broker.code,
+        platformFee,
+        brokerShare,
+      };
+    }
+
     const data: Prisma.QuoteRequestCreateInput = {
       ...rest,
       status: "NEW",
       signatureUrl,
       payload: rest.payload as Prisma.InputJsonValue | undefined,
+      ...( brokerData.brokerId ? { broker: { connect: { id: brokerData.brokerId } } } : {} ),
+      brokerCode: brokerData.brokerCode,
+      platformFee: brokerData.platformFee,
+      brokerShare: brokerData.brokerShare,
       documents: documents?.length
         ? {
             create: documents.map((doc) => ({
@@ -99,6 +120,7 @@ export class QuoteRequestsService {
       data,
       include: {
         documents: true,
+        broker: true,
       },
     });
   }

@@ -19,6 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
+import { BrokersModule } from './brokers/brokers.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { ClientsModule } from './clients/clients.module';
     DocumentsModule,
     AuthModule,
     ClientsModule,
+    BrokersModule,
   ],
   providers: [
     {

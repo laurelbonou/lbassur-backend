@@ -193,6 +193,13 @@ model QuoteRequest {
   receiptUrl      String?
   contractUrl     String?
   signatureUrl    String?
+  // ── Multi-Broker fields ──
+  brokerId        String?
+  broker          Broker?            @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  brokerCode      String?            // Code courtier saisi par le client
+  platformFee     Decimal?           @db.Decimal(12, 2) // Montant retenu par LBASSUR
+  brokerShare     Decimal?           @db.Decimal(12, 2) // Part reversée au courtier externe
+  // ── Relations ──
   documents       Document[]
   payment         Payment?
   claims          Claim[]
@@ -202,6 +209,7 @@ model QuoteRequest {
   @@index([clientId])
   @@index([status])
   @@index([createdAt])
+  @@index([brokerId])
 }
 
 model Document {
@@ -226,8 +234,52 @@ model Payment {
   method         String // "MTN", "MOOV", "VISA", "MASTERCARD"
   status         PaymentStatus @default(PENDING)
   reference      String        @unique // e.g. "LB-XYZ123"
+  commission     Commission?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+}
+
+// ── Multi-Broker Models ──────────────────────────────────────────────────────
+
+model Broker {
+  id              String         @id @default(cuid())
+  name            String                                    // "Cabinet XYZ"
+  code            String         @unique                    // Code courtier officiel (ex: "CIMA-BJ-0042")
+  slug            String         @unique
+  contactEmail    String?
+  contactPhone    String?
+  commissionRate  Decimal        @default(70) @db.Decimal(5, 2)  // % de la commission qui revient au courtier (défaut 70%)
+  platformRate    Decimal        @default(30) @db.Decimal(5, 2)  // % retenu par LBASSUR (défaut 30%)
+  active          Boolean        @default(true)
+  quotes          QuoteRequest[]
+  commissions     Commission[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+enum CommissionStatus {
+  PENDING
+  PAID
+  DISPUTED
+}
+
+model Commission {
+  id              String           @id @default(cuid())
+  paymentId       String           @unique
+  payment         Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  totalPremium    Decimal          @db.Decimal(12, 2)
+  platformRate    Decimal          @db.Decimal(5, 2)    // ex: 30
+  platformAmount  Decimal          @db.Decimal(12, 2)   // Montant LBASSUR
+  brokerRate      Decimal          @db.Decimal(5, 2)    // ex: 70
+  brokerAmount    Decimal          @db.Decimal(12, 2)   // Montant courtier externe
+  brokerId        String?
+  broker          Broker?          @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  status          CommissionStatus @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([brokerId])
+  @@index([status])
 }
 
 model AdminUser {

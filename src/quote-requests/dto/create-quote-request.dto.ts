@@ -55,4 +55,8 @@ export class CreateQuoteRequestDto {
   @IsOptional()
   @IsString()
   signatureData?: string;
+
+  @IsOptional()
+  @IsString()
+  brokerCode?: string;
 }

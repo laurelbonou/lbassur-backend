@@ -4,9 +4,10 @@ import { QuoteRequestsService } from "./quote-requests.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { DocumentsModule } from "../documents/documents.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { BrokersModule } from "../brokers/brokers.module";
 
 @Module({
-  imports: [PrismaModule, DocumentsModule, NotificationsModule],
+  imports: [PrismaModule, DocumentsModule, NotificationsModule, BrokersModule],
   controllers: [QuoteRequestsController],
   providers: [QuoteRequestsService],
 })
