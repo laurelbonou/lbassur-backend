@@ -17,26 +17,42 @@ export class SimulationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async simulate(category: string, typeLabel: string, criteria: SimulationCriteria) {
-    const zone = criteria.zone ?? "Zone Rouge";
-    
     // Base filters for all simulations
     const where: Prisma.TariffRuleWhereInput = {
       active: true,
       category: category as InsuranceCategory,
       insuranceTypeLabel: typeLabel,
-      zone,
+      ...(criteria.zone ? { zone: criteria.zone } : {}),
     };
+
+    // Chaque condition « valeur précise OU non renseignée » doit vivre dans son
+    // propre OR : deux affectations de `where.OR` s'écraseraient l'une l'autre.
+    const anyOf: Prisma.TariffRuleWhereInput[] = [];
 
     // Specific filters for Automobile
     if (typeLabel === "Assurance Automobile" || typeLabel === "Assurance Moto") {
       if (criteria.usage) where.vehicleUsage = criteria.usage;
       if (criteria.power) where.vehiclePower = criteria.power;
       if (criteria.duration) where.duration = criteria.duration;
-      if (criteria.pricingStatus) where.pricingStatus = criteria.pricingStatus;
+
+      if (criteria.pricingStatus) {
+        // Seul AFG différencie ses tarifs par zone de risque. Les autres
+        // compagnies pratiquent le même prix partout et laissent `pricingStatus`
+        // vide — les exclure reviendrait à ne comparer qu'un seul assureur dès
+        // que le client précise sa zone.
+        anyOf.push({
+          OR: [{ pricingStatus: criteria.pricingStatus }, { pricingStatus: null }],
+        });
+      }
+
       if (criteria.energy) {
-        where.OR = [{ vehicleEnergy: criteria.energy }, { vehicleEnergy: null }];
+        anyOf.push({
+          OR: [{ vehicleEnergy: criteria.energy }, { vehicleEnergy: null }],
+        });
       }
     }
+
+    if (anyOf.length) where.AND = anyOf;
 
     const rules = await this.prisma.tariffRule.findMany({
       where,
@@ -58,7 +74,7 @@ export class SimulationsService {
     });
 
     return {
-      input: { ...criteria, category, typeLabel, zone },
+      input: { ...criteria, category, typeLabel },
       count: rules.length,
       results: rules.map((rule) => ({
         id: rule.id,
