@@ -363,13 +363,25 @@ async function main() {
     },
   } as const;
 
+  // Les libellés des tarifs AFG doivent correspondre exactement à ce que le
+  // tunnel de simulation envoie, sinon la requête ne remonte aucun tarif AFG.
+  // Le formulaire propose « 7-10 CV » ; la source AFG écrit « 07-10 CV ».
+  const AFG_POWER_LABELS: Record<string, string> = {
+    "07-10 CV": "7-10 CV",
+  };
+
+  // « Véhicule de tourisme » chez AFG correspond à la catégorie promenade et
+  // affaires des autres compagnies — c'est ainsi que le formulaire la nomme.
+  const AFG_USAGE = "Promenade & Affaires";
+
   for (const [powerAndEnergy, durations] of Object.entries(AFG_TOURISM_TARIFFS)) {
     const energy = powerAndEnergy.includes("ESSENCE")
       ? "Essence"
       : powerAndEnergy.includes("DIESEL")
         ? "Diesel"
         : null;
-    const power = powerAndEnergy.replace(/ (ESSENCE|DIESEL)$/, "");
+    const sourcePower = powerAndEnergy.replace(/ (ESSENCE|DIESEL)$/, "");
+    const power = AFG_POWER_LABELS[sourcePower] ?? sourcePower;
 
     for (const [sourceDuration, prices] of Object.entries(durations)) {
       const hasBonus = sourceDuration.includes("BONUS");
@@ -384,7 +396,7 @@ async function main() {
           insurer: afg,
           offer: undefined,
           price,
-          usage: "Tourisme",
+          usage: AFG_USAGE,
           power,
           energy,
           duration,
