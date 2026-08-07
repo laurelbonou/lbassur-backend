@@ -1,4 +1,4 @@
-import { InsuranceCategory } from "@prisma/client";
+import { InsuranceCategory, PricingStatus } from "@prisma/client";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class QueryTariffRulesDto {
@@ -29,6 +29,10 @@ export class QueryTariffRulesDto {
   @IsOptional()
   @IsString()
   duration?: string;
+
+  @IsOptional()
+  @IsEnum(PricingStatus)
+  pricingStatus?: PricingStatus;
 
   @IsOptional()
   @IsString()

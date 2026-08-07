@@ -65,11 +65,11 @@ export class QuoteRequestsController {
     }
 
     // Generate Summary PDF (Fiche de Cotation)
-    const summaryPdfUrl = await this.documentsService.generateQuoteSummaryPdf(quote);
+    const summaryPdf = await this.documentsService.generateQuoteSummaryPdf(quote);
 
     // Email insurer
     const insurerEmail = process.env.INSURER_MOCK_EMAIL || "insurer@example.com";
-    await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents, summaryPdfUrl);
+    await this.notificationsService.sendQuoteToInsurer(insurerEmail, quote, quote.documents, summaryPdf.url);
 
     // Update status
     const updated = await this.prisma.quoteRequest.update({
@@ -108,21 +108,22 @@ export class QuoteRequestsController {
     });
 
     // Generate PDF
-    const contractUrl = await this.documentsService.generateFinalContract(updatedQuote, offer!.insurer);
+    const contract = await this.documentsService.generateFinalContract(updatedQuote, offer!.insurer);
 
     // Save contract URL and complete status
     const finalQuote = await this.prisma.quoteRequest.update({
       where: { id },
-      data: { 
-        contractUrl,
-        status: "COMPLETED" 
+      data: {
+        contractUrl: contract.url,
+        contractPublicId: contract.publicId,
+        status: "COMPLETED"
       }
     });
 
     // Send final contract to client
-    await this.notificationsService.sendFinalContractToClient(quote.email || "", quote.phone, contractUrl);
+    await this.notificationsService.sendFinalContractToClient(quote.email || "", quote.phone, contract.url);
 
-    return { success: true, contractUrl, quote: finalQuote };
+    return { success: true, contractUrl: contract.url, quote: finalQuote };
   }
 
   @Get("verify/:id")

@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Body, Req, UnauthorizedException, UseGuards, Patch, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UnauthorizedException, UseGuards, Patch, Param, ParseEnumPipe } from '@nestjs/common';
+import { ClaimStatus } from '@prisma/client';
 import { ClientsService } from './clients.service';
 import { JwtService } from '@nestjs/jwt';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
+import { CreateClaimDto } from './dto/create-claim.dto';
 
 @Controller('clients')
 export class ClientsController {
@@ -39,9 +41,9 @@ export class ClientsController {
   }
 
   @Post('me/claims')
-  createClaim(@Req() req: any, @Body() body: any) {
+  createClaim(@Req() req: any, @Body() dto: CreateClaimDto) {
     const clientId = this.getClientId(req);
-    return this.clientsService.createClaim(clientId, body);
+    return this.clientsService.createClaim(clientId, dto);
   }
 
   // Admin endpoints
@@ -51,9 +53,18 @@ export class ClientsController {
     return this.clientsService.getAllClaims();
   }
 
+  @Get('claims/:id')
+  @UseGuards(ApiKeyGuard)
+  getClaim(@Param('id') id: string) {
+    return this.clientsService.getClaim(id);
+  }
+
   @Patch('claims/:id')
   @UseGuards(ApiKeyGuard)
-  updateClaimStatus(@Param('id') id: string, @Body('status') status: string) {
+  updateClaimStatus(
+    @Param('id') id: string,
+    @Body('status', new ParseEnumPipe(ClaimStatus)) status: ClaimStatus,
+  ) {
     return this.clientsService.updateClaimStatus(id, status);
   }
 

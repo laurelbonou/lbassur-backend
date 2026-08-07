@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { BillingPeriod, InsuranceCategory, PrismaClient } from "@prisma/client";
+import { BillingPeriod, InsuranceCategory, PricingStatus, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -51,6 +51,22 @@ const insurers = [
     description: "Vrai visage de l'assurance.",
     website: "https://groupensia.com",
     categories: [InsuranceCategory.IARDT, InsuranceCategory.VIE],
+  },
+  {
+    name: "AFG Assurances",
+    slug: "afg-assurances",
+    logoUrl: "/images/partners/afg-assurances.png",
+    description: "Compagnie d'assurance opérant au Bénin.",
+    website: null,
+    categories: [InsuranceCategory.IARDT, InsuranceCategory.PERSONNES],
+  },
+  {
+    name: "GAB Assurances",
+    slug: "gab-assurances",
+    logoUrl: "/images/partners/gab.png",
+    description: "Compagnie d'assurance opérant au Bénin.",
+    website: null,
+    categories: [InsuranceCategory.IARDT, InsuranceCategory.PERSONNES],
   },
   {
     name: "Reference CIMA",
@@ -322,6 +338,66 @@ async function main() {
 
   const tariffRules = [];
 
+  // AFG source labels: Statut 1 is the higher-risk urban tariff (Cotonou,
+  // Abomey-Calavi and comparable city centres); Statut 2 is standard risk.
+  const AFG_TOURISM_TARIFFS = {
+    "07-10 CV": {
+      "1 AN": [68644, 65921], "6 MOIS": [39644, 38146], "3 MOIS": [32555, 31358],
+      "2 MOIS": [27400, 26419], "1 MOIS": [22244, 21482], "20 JOURS": [17733, 17161],
+      "10 JOURS": [13867, 13458], "1 AN BONUS 20%": [56755, 54577],
+    },
+    "11-14 CV": {
+      "1 AN": [80753, 77453], "6 MOIS": [46305, 44490], "3 MOIS": [37883, 36431],
+      "2 MOIS": [31760, 30570], "1 MOIS": [25635, 24710], "20 JOURS": [20276, 19583],
+      "10 JOURS": [15683, 15158], "1 AN BONUS 20%": [66443, 63803],
+    },
+    "06 CV ESSENCE": {
+      "1 AN": [63598, 61115], "6 MOIS": [36869, 35504], "3 MOIS": [30335, 29242],
+      "2 MOIS": [25583, 24689], "1 MOIS": [20831, 20136], "20 JOURS": [16673, 16152],
+      "10 JOURS": [13110, 12737], "1 AN BONUS 20%": [52718, 50732],
+    },
+    "12 CV DIESEL": {
+      "1 AN": [98918, 94752], "6 MOIS": [56295, 54004], "3 MOIS": [45875, 44042],
+      "2 MOIS": [38298, 36800], "1 MOIS": [30721, 29555], "20 JOURS": [24090, 23216],
+      "10 JOURS": [18407, 17784], "1 AN BONUS 20%": [80975, 77642],
+    },
+  } as const;
+
+  for (const [powerAndEnergy, durations] of Object.entries(AFG_TOURISM_TARIFFS)) {
+    const energy = powerAndEnergy.includes("ESSENCE")
+      ? "Essence"
+      : powerAndEnergy.includes("DIESEL")
+        ? "Diesel"
+        : null;
+    const power = powerAndEnergy.replace(/ (ESSENCE|DIESEL)$/, "");
+
+    for (const [sourceDuration, prices] of Object.entries(durations)) {
+      const hasBonus = sourceDuration.includes("BONUS");
+      const duration = hasBonus ? "1 AN" : sourceDuration;
+      for (const [index, price] of prices.entries()) {
+        const pricingStatus = index === 0
+          ? PricingStatus.STATUS_1_HIGH_RISK
+          : PricingStatus.STATUS_2_STANDARD_RISK;
+        tariffRules.push({
+          id: `auto-afg-tourisme-${powerAndEnergy}-${duration}-${pricingStatus}-${hasBonus ? "bonus20" : "standard"}`
+            .toLowerCase().replace(/[^a-z0-9]/g, "-"),
+          insurer: afg,
+          offer: undefined,
+          price,
+          usage: "Tourisme",
+          power,
+          energy,
+          duration,
+          zone: index === 0 ? "Zone Rouge" : "Zone Standard",
+          pricingStatus,
+          bonusRate: hasBonus ? 20 : null,
+          guaranteePackage: null,
+          guarantees: ["RC"],
+        });
+      }
+    }
+  }
+
   // --- AFRICAINE TARIFFS ---
   const AFRICAINE_TARIFFS_DATA = {
     "Promenade & Affaires": {
@@ -498,11 +574,14 @@ async function main() {
         insuranceTypeId: type.id,
         category: type.category || InsuranceCategory.IARDT,
         insuranceTypeLabel: type.label,
-        zone: "Zone Rouge",
+        zone: rule.zone ?? "Zone Rouge",
         vehicleUsage: rule.usage,
         vehiclePower: rule.power,
         vehicleEnergy: rule.energy,
         duration: rule.duration,
+        pricingStatus: rule.pricingStatus,
+        bonusRate: rule.bonusRate,
+        guaranteePackage: rule.guaranteePackage,
         price: rule.price,
         guarantees: rule.guarantees,
       },
@@ -513,11 +592,14 @@ async function main() {
         insuranceTypeId: type.id,
         category: type.category || InsuranceCategory.IARDT,
         insuranceTypeLabel: type.label,
-        zone: "Zone Rouge",
+        zone: rule.zone ?? "Zone Rouge",
         vehicleUsage: rule.usage,
         vehiclePower: rule.power,
         vehicleEnergy: rule.energy,
         duration: rule.duration,
+        pricingStatus: rule.pricingStatus,
+        bonusRate: rule.bonusRate,
+        guaranteePackage: rule.guaranteePackage,
         price: rule.price,
         guarantees: rule.guarantees,
       },

@@ -15,6 +15,7 @@ import { QuoteRequestsModule } from "./quote-requests/quote-requests.module";
 import { SimulationsModule } from "./simulations/simulations.module";
 import { TariffsModule } from "./tariffs/tariffs.module";
 import { UploadsModule } from "./uploads/uploads.module";
+import { StorageModule } from "./storage/storage.module";
 import { NotificationsModule } from './notifications/notifications.module';
 import { DocumentsModule } from './documents/documents.module';
 import { AuthModule } from './auth/auth.module';
@@ -59,6 +60,7 @@ import { BrokersModule } from './brokers/brokers.module';
     TariffsModule,
     SimulationsModule,
     QuoteRequestsModule,
+    StorageModule,
     UploadsModule,
     PaymentsModule,
     NotificationsModule,

@@ -1,4 +1,5 @@
-import { IsOptional, IsString } from "class-validator";
+import { PricingStatus } from "@prisma/client";
+import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class AutoSimulationDto {
   @IsString()
@@ -16,4 +17,8 @@ export class AutoSimulationDto {
   @IsOptional()
   @IsString()
   zone?: string;
+
+  @IsOptional()
+  @IsEnum(PricingStatus)
+  pricingStatus?: PricingStatus;
 }

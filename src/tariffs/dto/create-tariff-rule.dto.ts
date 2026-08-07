@@ -1,4 +1,4 @@
-import { InsuranceCategory } from "@prisma/client";
+import { InsuranceCategory, PricingStatus } from "@prisma/client";
 import {
   IsArray,
   IsBoolean,
@@ -47,6 +47,19 @@ export class CreateTariffRuleDto {
   @IsOptional()
   @IsString()
   duration?: string;
+
+  @IsOptional()
+  @IsEnum(PricingStatus)
+  pricingStatus?: PricingStatus;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  bonusRate?: number;
+
+  @IsOptional()
+  @IsString()
+  guaranteePackage?: string;
 
   @IsNumber()
   @Min(0)

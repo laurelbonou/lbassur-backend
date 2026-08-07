@@ -23,6 +23,7 @@ export class TariffsService {
     if (query.power) and.push({ vehiclePower: query.power });
     if (query.energy) and.push({ vehicleEnergy: query.energy });
     if (query.duration) and.push({ duration: query.duration });
+    if (query.pricingStatus) and.push({ pricingStatus: query.pricingStatus });
     if (query.active === "true") and.push({ active: true });
     if (query.active === "false") and.push({ active: false });
 

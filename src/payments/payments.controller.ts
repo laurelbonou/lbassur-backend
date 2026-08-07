@@ -145,11 +145,11 @@ export class PaymentsController {
         include: { documents: true },
       });
 
-      const receiptUrl = await this.documentsService.generateReceipt(quote, payment);
-      
+      const receipt = await this.documentsService.generateReceipt(quote, payment);
+
       await this.prisma.quoteRequest.update({
         where: { id: quote.id },
-        data: { receiptUrl },
+        data: { receiptUrl: receipt.url, receiptPublicId: receipt.publicId },
       });
 
       // ── Commission calculation ──
@@ -165,7 +165,7 @@ export class PaymentsController {
       }
 
       const adminEmail = process.env.ADMIN_EMAIL || "contact@lbassur.bj";
-      await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receiptUrl).catch(e => this.logger.error(e));
+      await this.notificationsService.notifyClientReceipt(quote.email || "", quote.phone, receipt.url).catch(e => this.logger.error(e));
       await this.notificationsService.notifyAdminNewQuote(adminEmail, quote.id).catch(e => this.logger.error(e));
       
       await this.notificationsService.notifyInsurerAfterPayment(quote, fullQuote?.documents || []).catch(err => {

@@ -1,17 +1,26 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutoSimulationDto } from "./dto/auto-simulation.dto";
-import { InsuranceCategory } from "@prisma/client";
+import { InsuranceCategory, PricingStatus, Prisma } from "@prisma/client";
+
+type SimulationCriteria = {
+  zone?: string;
+  usage?: string;
+  power?: string;
+  duration?: string;
+  energy?: string;
+  pricingStatus?: PricingStatus;
+};
 
 @Injectable()
 export class SimulationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async simulate(category: string, typeLabel: string, criteria: any) {
+  async simulate(category: string, typeLabel: string, criteria: SimulationCriteria) {
     const zone = criteria.zone ?? "Zone Rouge";
     
     // Base filters for all simulations
-    const where: any = {
+    const where: Prisma.TariffRuleWhereInput = {
       active: true,
       category: category as InsuranceCategory,
       insuranceTypeLabel: typeLabel,
@@ -23,6 +32,7 @@ export class SimulationsService {
       if (criteria.usage) where.vehicleUsage = criteria.usage;
       if (criteria.power) where.vehiclePower = criteria.power;
       if (criteria.duration) where.duration = criteria.duration;
+      if (criteria.pricingStatus) where.pricingStatus = criteria.pricingStatus;
       if (criteria.energy) {
         where.OR = [{ vehicleEnergy: criteria.energy }, { vehicleEnergy: null }];
       }

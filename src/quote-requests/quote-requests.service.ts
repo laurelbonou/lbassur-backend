@@ -5,6 +5,10 @@ import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
 import { NotificationsService } from "../notifications/notifications.service";
 import { BrokersService } from "../brokers/brokers.service";
 import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
+import { CloudinaryService, STORAGE_FOLDERS } from "../storage/cloudinary.service";
+
+/** Signature manuscrite : data URL produite par le canvas du formulaire. */
+const PNG_MAGIC = "89504E47";
 
 @Injectable()
 export class QuoteRequestsService {
@@ -12,7 +16,29 @@ export class QuoteRequestsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly brokersService: BrokersService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
+
+  /**
+   * Dépose la signature manuscrite sur Cloudinary et renvoie son publicId.
+   * Elle n'est plus écrite sur disque : les PDF générés la récupèrent depuis
+   * Cloudinary au moment de leur composition.
+   */
+  private async storeSignature(signatureData: string): Promise<string> {
+    const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    if (buffer.length < 4 || buffer.toString("hex", 0, 4).toUpperCase() !== PNG_MAGIC) {
+      throw new BadRequestException("Format de signature invalide. Seul le PNG est autorisé.");
+    }
+
+    const asset = await this.cloudinary.uploadBuffer(buffer, {
+      folder: STORAGE_FOLDERS.signatures,
+      mimeType: "image/png",
+    });
+
+    return asset.publicId;
+  }
 
   async findAll(query: PaginationQueryDto) {
     const { page = 1, limit = 10 } = query;
@@ -56,48 +82,45 @@ export class QuoteRequestsService {
 
   async create(dto: CreateQuoteRequestDto) {
     const { documents, signatureData, brokerCode, ...rest } = dto;
-    let signatureUrl: string | undefined = undefined;
 
-    if (signatureData) {
-      // Create uploads/signatures directory if not exists
-      const fs = require('fs');
-      const path = require('path');
-      const signaturesDir = path.join(__dirname, '..', '..', '..', 'uploads', 'signatures');
-      if (!fs.existsSync(signaturesDir)) {
-        fs.mkdirSync(signaturesDir, { recursive: true });
-      }
-      
-      const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      if (buffer.length < 4 || buffer.toString('hex', 0, 4).toUpperCase() !== '89504E47') {
-        throw new BadRequestException('Format de signature invalide. Seul le PNG est autorisé.');
-      }
-
-      const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
-      fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
-      signatureUrl = `/uploads/signatures/${fileName}`;
-    }
+    const signaturePublicId = signatureData
+      ? await this.storeSignature(signatureData)
+      : undefined;
 
     // ── Resolve broker if code provided ──
+    // Le code saisi est toujours conservé sur le devis, même s'il ne correspond
+    // à aucun intermédiaire connu : on ne bloque pas le client, un administrateur
+    // pourra rattacher le dossier manuellement. Tant que le rattachement n'est pas
+    // fait, aucune part n'est réservée et la prime revient intégralement à LBASSUR.
     let brokerData: { brokerId?: string; brokerCode?: string; platformFee?: number; brokerShare?: number } = {};
     if (brokerCode) {
-      const broker = await this.brokersService.findOrCreateByCode(brokerCode);
-      const totalAmount = rest.budget || 0;
-      const platformFee = Math.round((totalAmount * Number(broker.platformRate)) / 100);
-      const brokerShare = totalAmount - platformFee;
-      brokerData = {
-        brokerId: broker.id,
-        brokerCode: broker.code,
-        platformFee,
-        brokerShare,
-      };
+      brokerData.brokerCode = brokerCode.trim();
+
+      const broker = await this.brokersService.tryResolveByCode(brokerCode);
+      if (broker) {
+        const full = await this.prisma.broker.findUnique({
+          where: { id: broker.id },
+          select: { id: true, platformRate: true },
+        });
+        if (full) {
+          brokerData.brokerId = full.id;
+          // Taux non négocié : on rattache l'intermédiaire mais on ne chiffre
+          // aucune part. Number(null) valant 0, calculer ici reviendrait à lui
+          // promettre 100 % de la prime.
+          if (full.platformRate !== null) {
+            const totalAmount = rest.budget || 0;
+            const platformFee = Math.round((totalAmount * Number(full.platformRate)) / 100);
+            brokerData.platformFee = platformFee;
+            brokerData.brokerShare = totalAmount - platformFee;
+          }
+        }
+      }
     }
 
     const data: Prisma.QuoteRequestCreateInput = {
       ...rest,
       status: "NEW",
-      signatureUrl,
+      signaturePublicId,
       payload: rest.payload as Prisma.InputJsonValue | undefined,
       ...( brokerData.brokerId ? { broker: { connect: { id: brokerData.brokerId } } } : {} ),
       brokerCode: brokerData.brokerCode,
@@ -108,6 +131,9 @@ export class QuoteRequestsService {
             create: documents.map((doc) => ({
               type: doc.type,
               filename: doc.filename,
+              publicId: doc.publicId,
+              resourceType: doc.resourceType,
+              format: doc.format,
               url: doc.url,
               mimeType: doc.mimeType,
               size: doc.size,
@@ -162,31 +188,14 @@ export class QuoteRequestsService {
 
   async update(id: string, dto: Partial<CreateQuoteRequestDto>) {
     const { documents, signatureData, ...rest } = dto;
-    let signatureUrl: string | undefined = undefined;
 
-    if (signatureData) {
-      const fs = require('fs');
-      const path = require('path');
-      const signaturesDir = path.join(__dirname, '..', '..', '..', 'uploads', 'signatures');
-      if (!fs.existsSync(signaturesDir)) {
-        fs.mkdirSync(signaturesDir, { recursive: true });
-      }
-      
-      const base64Data = signatureData.replace(/^data:image\/png;base64,/, "");
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      if (buffer.length < 4 || buffer.toString('hex', 0, 4).toUpperCase() !== '89504E47') {
-        throw new BadRequestException('Format de signature invalide. Seul le PNG est autorisé.');
-      }
-
-      const fileName = `sign-${Date.now()}-${Math.floor(Math.random() * 1000)}.png`;
-      fs.writeFileSync(path.join(signaturesDir, fileName), buffer);
-      signatureUrl = `/uploads/signatures/${fileName}`;
-    }
+    const signaturePublicId = signatureData
+      ? await this.storeSignature(signatureData)
+      : undefined;
 
     const dataToUpdate: Prisma.QuoteRequestUpdateInput = {
       ...rest,
-      signatureUrl: signatureUrl || undefined,
+      signaturePublicId,
       payload: rest.payload ? (rest.payload as Prisma.InputJsonValue) : undefined,
     };
 
@@ -204,6 +213,9 @@ export class QuoteRequestsService {
               create: documents.map((doc) => ({
                 type: doc.type,
                 filename: doc.filename,
+                publicId: doc.publicId,
+                resourceType: doc.resourceType,
+                format: doc.format,
                 url: doc.url,
                 mimeType: doc.mimeType,
                 size: doc.size,

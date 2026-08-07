@@ -47,7 +47,12 @@ export class CreateQuoteRequestDto {
   documents?: {
     type: string;
     filename: string;
-    url: string;
+    /** Référence Cloudinary renvoyée par POST /uploads. */
+    publicId?: string;
+    resourceType?: string;
+    format?: string;
+    /** Ancien chemin `/uploads/...`, avant la bascule vers Cloudinary. */
+    url?: string;
     mimeType: string;
     size: number;
   }[];

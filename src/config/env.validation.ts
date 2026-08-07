@@ -8,6 +8,10 @@ export const envValidationSchema = Joi.object({
   JWT_SECRET: Joi.string().required(),
   REFRESH_TOKEN_SECRET: Joi.string().required(),
   ADMIN_API_KEY: Joi.string().required(),
+  // Stockage des fichiers (Cloudinary). Requis : sans lui, aucun téléversement
+  // ni aucune génération de document ne peut aboutir — mieux vaut refuser de
+  // démarrer que échouer au premier upload.
+  CLOUDINARY_URL: Joi.string().required(),
   // Optionnels en dev, obligatoires en prod si nécessaire, mais on les rend optionnels pour l'instant
   FEEXPAY_WEBHOOK_SECRET: Joi.string().optional(),
   SMTP_HOST: Joi.string().optional(),

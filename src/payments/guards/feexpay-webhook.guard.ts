@@ -2,6 +2,19 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import * as crypto from 'crypto';
 import { Logger } from 'nestjs-pino';
 
+/**
+ * Authentifie les webhooks de paiement FeexPay.
+ *
+ * FeexPay ne signe pas le corps des requêtes : sa console propose uniquement un
+ * en-tête `Authorization` fixe, en `Bearer` ou `Basic`, dont on choisit soi-même
+ * la valeur. Le contrôle se réduit donc à comparer ce jeton partagé.
+ *
+ * Conséquence à connaître : contrairement à une signature HMAC, ce mécanisme ne
+ * prouve pas que le corps est intact et n'empêche pas le rejeu. Quiconque obtient
+ * le jeton peut fabriquer une confirmation de paiement. La parade robuste est de
+ * confirmer chaque transaction auprès de l'API FeexPay avant de la marquer payée,
+ * plutôt que de faire confiance au corps reçu.
+ */
 @Injectable()
 export class FeexPayWebhookGuard implements CanActivate {
   constructor(private readonly logger: Logger) {}
@@ -15,39 +28,32 @@ export class FeexPayWebhookGuard implements CanActivate {
       return true; // Bypass if not configured, though in prod it should be enforced by env.validation
     }
 
-    const signature = request.headers['x-feexpay-signature'];
-    const timestamp = request.headers['x-feexpay-timestamp'];
-    const nonce = request.headers['x-feexpay-nonce'];
-
-    if (!signature) {
-      throw new UnauthorizedException('Missing signature header');
+    const header: string | undefined = request.headers['authorization'];
+    if (!header) {
+      throw new UnauthorizedException('Missing authorization header');
     }
 
-    // Protect against replay attacks (e.g. timestamp > 5 mins old)
-    if (timestamp) {
-      const requestTime = parseInt(timestamp, 10);
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (Math.abs(currentTime - requestTime) > 300) {
-        throw new UnauthorizedException('Request expired (Replay protection)');
-      }
-    }
+    // FeexPay envoie « Bearer <valeur> » ou « Basic <valeur> » selon le type
+    // choisi dans sa console. On accepte les deux et on ne compare que la valeur.
+    const token = header.replace(/^(Bearer|Basic)\s+/i, '').trim();
 
-    // Compute HMAC SHA256
-    // Note: In a real scenario, the raw body buffer should be used. 
-    // Here we stringify the parsed body as a fallback.
-    const payload = JSON.stringify(request.body);
-    const dataToSign = timestamp && nonce ? `${timestamp}.${nonce}.${payload}` : payload;
-
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(dataToSign)
-      .digest('hex');
-
-    if (signature !== expectedSignature) {
-      this.logger.error({ expectedSignature, signature }, 'Invalid FeexPay webhook signature');
-      throw new UnauthorizedException('Invalid signature');
+    if (!this.matches(token, secret)) {
+      this.logger.error('Invalid FeexPay webhook token');
+      throw new UnauthorizedException('Invalid token');
     }
 
     return true;
+  }
+
+  /**
+   * Comparaison à temps constant : une comparaison `!==` classique s'arrête au
+   * premier octet différent, ce qui laisse deviner le jeton attendu octet par
+   * octet en mesurant le temps de réponse.
+   */
+  private matches(received: string, expected: string): boolean {
+    const a = Buffer.from(received, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   }
 }

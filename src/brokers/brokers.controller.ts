@@ -2,30 +2,43 @@ import { Controller, Get, Post, Body, Param, Patch, Query, UseGuards, UseInterce
 import { CacheInterceptor } from "@nestjs/cache-manager";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { BrokersService } from "./brokers.service";
-import { CreateBrokerDto, UpdateBrokerDto } from "./dto/broker.dto";
+import {
+  CreateBrokerDto,
+  UpdateBrokerDto,
+  QueryBrokersDto,
+  SetInsurerCodeDto,
+} from "./dto/broker.dto";
 import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 
 @Controller("brokers")
 export class BrokersController {
   constructor(private readonly brokersService: BrokersService) {}
 
-  // ── Public Routes ──────────────────────────────────────────────────────────
+  // ── Public ─────────────────────────────────────────────────────────────────
 
   /**
-   * Look up a broker by their code.
-   * Used by the frontend during subscription flow to validate a broker code.
+   * Liste des intermédiaires proposée au client pendant la souscription.
+   * Passer `insurerSlug` pour n'afficher que les agents généraux habilités
+   * sur cette compagnie (les courtiers, eux, restent toujours listés).
    */
-  @Get("lookup/:code")
+  @Get("public")
   @UseInterceptors(CacheInterceptor)
-  lookupByCode(@Param("code") code: string) {
-    return this.brokersService.findByCode(code);
+  findPublic(@Query() query: QueryBrokersDto) {
+    return this.brokersService.findPublic(query);
   }
 
-  // ── Admin Routes ───────────────────────────────────────────────────────────
+  /** Vérifie un code saisi par le client. `insurerSlug` lève l'ambiguïté. */
+  @Get("lookup/:code")
+  @UseInterceptors(CacheInterceptor)
+  lookupByCode(@Param("code") code: string, @Query("insurerSlug") insurerSlug?: string) {
+    return this.brokersService.resolveByCode(code, insurerSlug);
+  }
+
+  // ── Admin ──────────────────────────────────────────────────────────────────
 
   @Get()
   @UseGuards(ApiKeyGuard)
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: QueryBrokersDto) {
     return this.brokersService.findAll(query);
   }
 
@@ -51,5 +64,12 @@ export class BrokersController {
   @UseGuards(ApiKeyGuard)
   update(@Param("id") id: string, @Body() dto: UpdateBrokerDto) {
     return this.brokersService.update(id, dto);
+  }
+
+  /** Attribue le code de cet intermédiaire chez une compagnie donnée. */
+  @Post(":id/codes")
+  @UseGuards(ApiKeyGuard)
+  setInsurerCode(@Param("id") id: string, @Body() dto: SetInsurerCodeDto) {
+    return this.brokersService.setInsurerCode(id, dto.insurerId, dto.code);
   }
 }

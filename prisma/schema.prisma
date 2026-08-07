@@ -49,6 +49,22 @@ enum ClaimStatus {
   REJECTED
 }
 
+enum ClaimAttachmentKind {
+  PHOTO // photos du sinistre, du constat, des dégâts
+  AUDIO // note vocale enregistrée par le client, écoutée par un gestionnaire
+  DOCUMENT // constat amiable scanné, PV de police, devis de réparation
+}
+
+enum ClaimType {
+  COLLISION
+  VOL
+  INCENDIE
+  BRIS_DE_GLACE
+  DEGAT_DES_EAUX
+  CATASTROPHE_NATURELLE
+  AUTRE
+}
+
 enum AdminRole {
   ADMIN
   EDITOR
@@ -67,21 +83,25 @@ model Insurer {
   categories        InsuranceCategory[] @default([])
   offers            Offer[]
   tariffRules       TariffRule[]
+  travelTariffRules TravelTariffRule[]
+  intermediaries    Broker[] // agents généraux mandatés par cette compagnie
+  brokerCodes       BrokerInsurerCode[] // codes attribués par cette compagnie
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 }
 
 model InsuranceType {
-  id          String            @id @default(cuid())
-  label       String
-  slug        String            @unique
-  category    InsuranceCategory
-  subType     String?
-  description String?
-  offers      Offer[]
-  tariffRules TariffRule[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id                String             @id @default(cuid())
+  label             String
+  slug              String             @unique
+  category          InsuranceCategory
+  subType           String?
+  description       String?
+  offers            Offer[]
+  tariffRules       TariffRule[]
+  travelTariffRules TravelTariffRule[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([category])
 }
@@ -144,6 +164,11 @@ model OfferGuarantee {
   @@unique([offerId, guaranteeId])
 }
 
+enum PricingStatus {
+  STATUS_1_HIGH_RISK
+  STATUS_2_STANDARD_RISK
+}
+
 model TariffRule {
   id                 String            @id @default(cuid())
   offerId            String?
@@ -159,6 +184,9 @@ model TariffRule {
   vehiclePower       String?
   vehicleEnergy      String?
   duration           String?
+  pricingStatus      PricingStatus?
+  bonusRate          Decimal?          @db.Decimal(5, 2)
+  guaranteePackage   String?
   price              Decimal           @db.Decimal(12, 2)
   currency           String            @default("XOF")
   guarantees         String[]          @default([])
@@ -170,7 +198,36 @@ model TariffRule {
   updatedAt          DateTime          @updatedAt
 
   @@index([category, insuranceTypeLabel])
-  @@index([vehicleUsage, vehiclePower, vehicleEnergy, duration])
+  @@index([vehicleUsage, vehiclePower, vehicleEnergy, duration, pricingStatus])
+  @@index([active])
+}
+
+/// Voyage has different rating dimensions from motor insurance and must not be
+/// forced into vehicle usage/power/energy columns.
+model TravelTariffRule {
+  id               String         @id @default(cuid())
+  insurerId        String
+  insurer          Insurer        @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  insuranceTypeId  String?
+  insuranceType    InsuranceType? @relation(fields: [insuranceTypeId], references: [id], onDelete: SetNull)
+  destinationZone  String
+  durationMinDays  Int
+  durationMaxDays  Int
+  travelerAgeMin   Int?
+  travelerAgeMax   Int?
+  guaranteePackage String?
+  price            Decimal        @db.Decimal(12, 2)
+  currency         String         @default("XOF")
+  guarantees       String[]       @default([])
+  active           Boolean        @default(true)
+  validFrom        DateTime?
+  validUntil       DateTime?
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([destinationZone, durationMinDays, durationMaxDays])
+  @@index([travelerAgeMin, travelerAgeMax, guaranteePackage])
   @@index([active])
 }
 
@@ -190,21 +247,31 @@ model QuoteRequest {
   payload         Json?
   status          LeadStatus         @default(NEW)
   policyNumber    String?
-  receiptUrl      String?
-  contractUrl     String?
-  signatureUrl    String?
+
+  // Reçus et contrats : l'URL est envoyée au client par email et SMS, il peut
+  // l'ouvrir des jours plus tard. Elle est donc signée mais SANS expiration —
+  // un lien expirant serait mort à l'ouverture du message. Le publicId permet
+  // de la régénérer ou de supprimer le fichier.
+  receiptUrl       String?
+  receiptPublicId  String?
+  contractUrl      String?
+  contractPublicId String?
+
+  /// Signature manuscrite du souscripteur, intégrée aux PDF générés.
+  signatureUrl      String? // ancien chemin `/uploads/signatures/...`
+  signaturePublicId String?
   // ── Multi-Broker fields ──
-  brokerId        String?
-  broker          Broker?            @relation(fields: [brokerId], references: [id], onDelete: SetNull)
-  brokerCode      String?            // Code courtier saisi par le client
-  platformFee     Decimal?           @db.Decimal(12, 2) // Montant retenu par LBASSUR
-  brokerShare     Decimal?           @db.Decimal(12, 2) // Part reversée au courtier externe
+  brokerId          String?
+  broker            Broker?    @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  brokerCode        String? // Code courtier saisi par le client
+  platformFee       Decimal?   @db.Decimal(12, 2) // Montant retenu par LBASSUR
+  brokerShare       Decimal?   @db.Decimal(12, 2) // Part reversée au courtier externe
   // ── Relations ──
-  documents       Document[]
-  payment         Payment?
-  claims          Claim[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  documents         Document[]
+  payment           Payment?
+  claims            Claim[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   @@index([clientId])
   @@index([status])
@@ -218,10 +285,18 @@ model Document {
   quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
   type           String // "carte_grise", "piece_identite", etc.
   filename       String
-  url            String // path to the local or cloud file
   mimeType       String
   size           Int
-  createdAt      DateTime     @default(now())
+
+  // Référence Cloudinary — même principe que ClaimAttachment.
+  publicId     String?
+  resourceType String?
+  format       String?
+
+  /// Ancien chemin `/uploads/...`, avant la bascule vers Cloudinary.
+  url String?
+
+  createdAt DateTime @default(now())
 
   @@index([quoteRequestId])
 }
@@ -241,42 +316,93 @@ model Payment {
 
 // ── Multi-Broker Models ──────────────────────────────────────────────────────
 
+enum IntermediaryType {
+  COURTIER // Société de courtage agréée (liste ministérielle) — travaille avec plusieurs compagnies
+  AGENT_GENERAL // Agent général / agence — mandaté par UNE seule compagnie
+}
+
 model Broker {
-  id              String         @id @default(cuid())
-  name            String                                    // "Cabinet XYZ"
-  code            String         @unique                    // Code courtier officiel (ex: "CIMA-BJ-0042")
-  slug            String         @unique
-  contactEmail    String?
-  contactPhone    String?
-  commissionRate  Decimal        @default(70) @db.Decimal(5, 2)  // % de la commission qui revient au courtier (défaut 70%)
-  platformRate    Decimal        @default(30) @db.Decimal(5, 2)  // % retenu par LBASSUR (défaut 30%)
-  active          Boolean        @default(true)
-  quotes          QuoteRequest[]
-  commissions     Commission[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id   String           @id @default(cuid())
+  name String // "ASCOMA Bénin", "AGENCE DE GODOMEY"
+  slug String           @unique
+  type IntermediaryType @default(COURTIER)
+
+  // ── Agrément ministériel (courtiers uniquement) ──
+  approvalRank Int? // N° dans la liste du Ministère des Finances
+  approvalYear Int? // Exercice de l'agrément (ex: 2026)
+
+  // ── Compagnie mandante ──
+  // NULL pour un COURTIER (il est libre de placer chez n'importe quel assureur).
+  // OBLIGATOIRE pour un AGENT_GENERAL : il ne peut vendre que les produits de cette compagnie.
+  insurerId String?
+  insurer   Insurer? @relation(fields: [insurerId], references: [id], onDelete: SetNull)
+
+  // ── Implantation (surtout utile pour les agences) ──
+  city         String?
+  region       String?
+  address      String?
+  contactEmail String?
+  contactPhone String?
+
+  // NULL = taux pas encore négocié avec cet intermédiaire.
+  // Tant qu'ils le sont, aucune part n'est reversée automatiquement : la
+  // commission est enregistrée en RATE_UNDEFINED pour arbitrage manuel.
+  // Ne jamais remettre de @default ici — un taux supposé est une dette réelle.
+  commissionRate Decimal? @db.Decimal(5, 2) // % reversé à l'intermédiaire
+  platformRate   Decimal? @db.Decimal(5, 2) // % retenu par LBASSUR
+  active         Boolean  @default(true)
+
+  insurerCodes BrokerInsurerCode[]
+  quotes       QuoteRequest[]
+  commissions  Commission[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([type])
+  @@index([insurerId])
+  @@index([active])
+}
+
+/// Code attribué à un intermédiaire PAR une compagnie d'assurance.
+/// Un même courtier porte un code différent chez chaque assureur :
+/// LABASSUR = 3610 chez L'Africaine, mais un autre numéro chez NSIA ou SUNU.
+model BrokerInsurerCode {
+  id        String   @id @default(cuid())
+  brokerId  String
+  broker    Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  insurerId String
+  insurer   Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  code      String // "3610", "2191"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([insurerId, code]) // un code ne désigne qu'un intermédiaire au sein d'une compagnie
+  @@unique([brokerId, insurerId]) // un intermédiaire n'a qu'un code par compagnie
+  @@index([code])
 }
 
 enum CommissionStatus {
+  RATE_UNDEFINED // Intermédiaire identifié mais taux non négocié : part à arbitrer
   PENDING
   PAID
   DISPUTED
 }
 
 model Commission {
-  id              String           @id @default(cuid())
-  paymentId       String           @unique
-  payment         Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  totalPremium    Decimal          @db.Decimal(12, 2)
-  platformRate    Decimal          @db.Decimal(5, 2)    // ex: 30
-  platformAmount  Decimal          @db.Decimal(12, 2)   // Montant LBASSUR
-  brokerRate      Decimal          @db.Decimal(5, 2)    // ex: 70
-  brokerAmount    Decimal          @db.Decimal(12, 2)   // Montant courtier externe
-  brokerId        String?
-  broker          Broker?          @relation(fields: [brokerId], references: [id], onDelete: SetNull)
-  status          CommissionStatus @default(PENDING)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  paymentId      String           @unique
+  payment        Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  totalPremium   Decimal          @db.Decimal(12, 2)
+  platformRate   Decimal          @db.Decimal(5, 2) // ex: 30
+  platformAmount Decimal          @db.Decimal(12, 2) // Montant LBASSUR
+  brokerRate     Decimal          @db.Decimal(5, 2) // ex: 70
+  brokerAmount   Decimal          @db.Decimal(12, 2) // Montant courtier externe
+  brokerId       String?
+  broker         Broker?          @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  status         CommissionStatus @default(PENDING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@index([brokerId])
   @@index([status])
@@ -294,32 +420,75 @@ model AdminUser {
 }
 
 model Client {
-  id           String                 @id @default(cuid())
-  phone        String                 @unique
-  email        String?                @unique
-  passwordHash String?
-  fullName     String?
-  quotes       QuoteRequest[]
-  claims       Claim[]
+  id             String                 @id @default(cuid())
+  phone          String                 @unique
+  email          String?                @unique
+  passwordHash   String?
+  fullName       String?
+  quotes         QuoteRequest[]
+  claims         Claim[]
   changeRequests ProfileChangeRequest[]
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 }
 
 model Claim {
-  id             String        @id @default(cuid())
+  id             String            @id @default(cuid())
   clientId       String
-  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
   quoteRequestId String?
-  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
-  description    String        @db.Text
+  quoteRequest   QuoteRequest?     @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  description    String            @db.Text
   incidentDate   DateTime
-  status         ClaimStatus   @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  status         ClaimStatus       @default(PENDING)
+  attachments    ClaimAttachment[]
+
+  // ── Circonstances, pour que la compagnie puisse instruire sans rappeler ──
+  claimType       ClaimType?
+  incidentTime    String? // "HH:mm", approximatif
+  locationCity    String? // commune : Cotonou, Abomey-Calavi, Parakou…
+  locationDetails String? // quartier, rue, point de repère
+
+  hasInjuries       Boolean @default(false)
+  hasAmicableReport Boolean @default(false) // constat amiable établi
+  hasPoliceReport   Boolean @default(false) // PV de police ou dépôt de plainte
+  policeReportRef   String?
+
+  // Tiers impliqué. Tous nuls quand le sinistre n'implique personne d'autre.
+  thirdPartyName    String?
+  thirdPartyPlate   String?
+  thirdPartyInsurer String?
+  thirdPartyPolicy  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([clientId])
   @@index([status])
+}
+
+model ClaimAttachment {
+  id       String              @id @default(cuid())
+  claimId  String
+  claim    Claim               @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  kind     ClaimAttachmentKind
+  filename String // nom d'origine côté client, pour l'affichage
+  mimeType String
+  size     Int // taille après compression : c'est elle qui consomme du stockage
+
+  // Référence Cloudinary. On ne stocke pas d'URL : les fichiers sont en accès
+  // restreint et l'URL de consultation, signée et expirante, est régénérée à
+  // chaque lecture.
+  publicId     String?
+  resourceType String? // "image" | "video" (audio) | "raw"
+  format       String?
+
+  /// Ancien chemin `/uploads/...`, avant la bascule vers Cloudinary.
+  url String?
+
+  createdAt DateTime @default(now())
+
+  @@index([claimId])
 }
 
 enum RequestStatus {
@@ -332,7 +501,7 @@ model ProfileChangeRequest {
   id               String        @id @default(cuid())
   clientId         String
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requestedData    Json          // Will store e.g., { phone: "...", email: "..." }
+  requestedData    Json // Will store e.g., { phone: "...", email: "..." }
   proofDocumentUrl String
   status           RequestStatus @default(PENDING)
   adminNote        String?

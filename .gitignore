@@ -30,8 +30,8 @@ lerna-debug.log*
 .env.test
 .env.production
 
-# Prisma
-/prisma/migrations
-
 # NestJS
 .nest
+
+# Fichiers de travail locaux (logs de démarrage, sorties de build temporaires)
+.tmp

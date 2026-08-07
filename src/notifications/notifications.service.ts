@@ -7,9 +7,17 @@ export class NotificationsService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      port,
+      // Le port 465 attend une connexion déjà chiffrée (TLS implicite) ; 587 et
+      // 25 s'ouvrent en clair puis négocient STARTTLS. Se tromper ne produit pas
+      // une erreur claire : la connexion reste suspendue jusqu'au délai d'attente.
+      secure: process.env.SMTP_SECURE
+        ? process.env.SMTP_SECURE === 'true'
+        : port === 465,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -26,7 +34,12 @@ export class NotificationsService {
       }
 
       const info = await this.transporter.sendMail({
-        from: '"LBAssur" <contact@lbassur.bj>', // sender address
+        // L'expéditeur doit être une adresse que le compte SMTP est autorisé à
+        // utiliser, sinon le message est rejeté ou classé en indésirable.
+        from: process.env.SMTP_FROM || '"LBAssur" <contact@lbassur.bj>',
+        // Un client qui répond à un reçu ou à son contrat doit arriver sur une
+        // boîte lue par quelqu'un, même si l'envoi vient d'un « no-reply ».
+        replyTo: process.env.SMTP_REPLY_TO || undefined,
         to, // list of receivers
         subject, // Subject line
         text, // plain text body
