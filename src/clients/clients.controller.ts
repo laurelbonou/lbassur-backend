@@ -59,13 +59,20 @@ export class ClientsController {
     return this.clientsService.getClaim(id);
   }
 
+  @Post('claims/:id/report')
+  @UseGuards(ApiKeyGuard)
+  generateClaimReport(@Param('id') id: string) {
+    return this.clientsService.generateClaimReport(id);
+  }
+
   @Patch('claims/:id')
   @UseGuards(ApiKeyGuard)
   updateClaimStatus(
     @Param('id') id: string,
     @Body('status', new ParseEnumPipe(ClaimStatus)) status: ClaimStatus,
+    @Body('adminNote') adminNote?: string,
   ) {
-    return this.clientsService.updateClaimStatus(id, status);
+    return this.clientsService.updateClaimStatus(id, status, adminNote);
   }
 
   // --- Profile Change Requests ---

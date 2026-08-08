@@ -433,7 +433,13 @@ model Client {
 }
 
 model Claim {
-  id             String            @id @default(cuid())
+  id String @id @default(cuid())
+
+  /// Référence lisible, du type SIN-2026-00042 : un identifiant cuid ne se
+  /// dicte pas au téléphone. Générée par la base via une séquence, pour rester
+  /// unique même si deux déclarations arrivent au même instant.
+  reference String @unique @default(dbgenerated())
+
   clientId       String
   client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
   quoteRequestId String?
@@ -459,6 +465,10 @@ model Claim {
   thirdPartyPlate   String?
   thirdPartyInsurer String?
   thirdPartyPolicy  String?
+
+  /// Message du gestionnaire, visible par le client dans son espace : pièce
+  /// manquante à fournir, motif de rejet, avancement du dossier.
+  adminNote String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

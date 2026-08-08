@@ -15,6 +15,23 @@ export type GeneratedDocument = {
   publicId: string;
 };
 
+/**
+ * Code d'agrément LBASSUR au registre des intermédiaires du Ministère des
+ * Finances. Figure sur tout dossier transmis à une compagnie.
+ */
+const LBASSUR_BROKER_CODE = "3610";
+
+/** Doit rester aligné sur l'enum ClaimType de Prisma. */
+const CLAIM_TYPE_LABELS: Record<string, string> = {
+  COLLISION: "Collision / accident",
+  VOL: "Vol",
+  INCENDIE: "Incendie",
+  BRIS_DE_GLACE: "Bris de glace",
+  DEGAT_DES_EAUX: "Dégât des eaux",
+  CATASTROPHE_NATURELLE: "Catastrophe naturelle",
+  AUTRE: "Autre",
+};
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
@@ -151,6 +168,129 @@ export class DocumentsService {
     });
 
     return this.store(pdf, STORAGE_FOLDERS.contracts);
+  }
+
+  /**
+   * Dossier de sinistre destiné à la compagnie.
+   *
+   * Il doit se suffire à lui-même : le gestionnaire de la compagnie ne se
+   * connectera pas à notre espace pour voir les photos. Elles sont donc
+   * intégrées au document, pas référencées par un lien.
+   */
+  async generateClaimReport(claim: any): Promise<GeneratedDocument> {
+    const attachments: any[] = claim.attachments ?? [];
+    const photos = attachments.filter((f) => f.kind === "PHOTO" && f.publicId);
+    const autres = attachments.filter((f) => f.kind !== "PHOTO");
+
+    // Téléchargées avant la composition : pdfkit veut un buffer, et un échec
+    // réseau ne doit pas laisser un document à moitié écrit.
+    const images: { filename: string; data: Buffer }[] = [];
+    for (const photo of photos) {
+      try {
+        images.push({
+          filename: photo.filename,
+          data: await this.cloudinary.downloadBuffer(photo),
+        });
+      } catch (error) {
+        this.logger.error(`Photo non intégrée au dossier : ${photo.filename}`, error as Error);
+      }
+    }
+
+    const pdf = await this.renderPdf((doc) => {
+      const ligne = (label: string, valeur?: string | null) => {
+        doc.fontSize(10).fillColor("#666").text(`${label} : `, { continued: true });
+        doc.fillColor("#000").text(valeur || "Non renseigné");
+      };
+
+      // ── En-tête : qui transmet, et sous quel code ──
+      doc.fontSize(9).fillColor("#666").text("LBASSUR — Courtier en assurance");
+      doc.text(`Code intermédiaire : ${LBASSUR_BROKER_CODE}`);
+      doc.moveDown(1.5);
+
+      doc.fontSize(18).fillColor("#000").text("DÉCLARATION DE SINISTRE", { align: "center" });
+      doc.fontSize(13).fillColor("#c0392b").text(claim.reference, { align: "center" });
+      doc.moveDown(1.5);
+      doc.fillColor("#000");
+
+      // ── Assuré et contrat ──
+      doc.fontSize(12).text("Assuré et contrat", { underline: true });
+      doc.moveDown(0.5);
+      ligne("Nom", claim.client?.fullName);
+      ligne("Téléphone", claim.client?.phone);
+      ligne("Email", claim.client?.email);
+      ligne("N° de police", claim.quoteRequest?.policyNumber);
+      ligne("Type de contrat", claim.quoteRequest?.insuranceType?.replace("-", " "));
+      doc.moveDown();
+
+      // ── Circonstances ──
+      doc.fontSize(12).text("Circonstances", { underline: true });
+      doc.moveDown(0.5);
+      ligne("Nature", CLAIM_TYPE_LABELS[claim.claimType] ?? null);
+      ligne("Date", new Date(claim.incidentDate).toLocaleDateString("fr-FR"));
+      ligne("Heure", claim.incidentTime);
+      ligne("Commune", claim.locationCity);
+      ligne("Lieu précis", claim.locationDetails);
+      ligne("Déclaré le", new Date(claim.createdAt).toLocaleDateString("fr-FR"));
+      doc.moveDown(0.5);
+
+      doc.fontSize(10).fillColor("#666").text("Récit de l'assuré :");
+      doc.fillColor("#000").text(claim.description, { align: "justify" });
+      doc.moveDown();
+
+      // ── Éléments déclarés ──
+      doc.fontSize(12).text("Éléments déclarés", { underline: true });
+      doc.moveDown(0.5);
+      ligne("Blessés", claim.hasInjuries ? "OUI" : "Non");
+      ligne("Constat amiable", claim.hasAmicableReport ? "Oui" : "Non");
+      ligne("PV de police / plainte", claim.hasPoliceReport ? "Oui" : "Non");
+      if (claim.hasPoliceReport) ligne("Référence du PV", claim.policeReportRef);
+      doc.moveDown();
+
+      // ── Tiers, seulement s'il y en a un ──
+      if (
+        claim.thirdPartyName ||
+        claim.thirdPartyPlate ||
+        claim.thirdPartyInsurer ||
+        claim.thirdPartyPolicy
+      ) {
+        doc.fontSize(12).text("Tiers impliqué", { underline: true });
+        doc.moveDown(0.5);
+        ligne("Nom", claim.thirdPartyName);
+        ligne("Immatriculation", claim.thirdPartyPlate);
+        ligne("Compagnie", claim.thirdPartyInsurer);
+        ligne("N° de police", claim.thirdPartyPolicy);
+        doc.moveDown();
+      }
+
+      // ── Pièces non imprimables (notes vocales, documents) ──
+      if (autres.length) {
+        doc.fontSize(12).text("Autres pièces au dossier", { underline: true });
+        doc.moveDown(0.5);
+        for (const f of autres) {
+          const nature = f.kind === "AUDIO" ? "Note vocale" : "Document";
+          doc.fontSize(10).fillColor("#000").text(`• ${nature} — ${f.filename}`);
+        }
+        doc
+          .fontSize(9)
+          .fillColor("#666")
+          .text("Ces pièces sont conservées par LBASSUR et transmissibles sur demande.");
+        doc.moveDown();
+      }
+
+      // ── Photos, une par page pour rester lisibles ──
+      for (const image of images) {
+        doc.addPage();
+        doc.fontSize(10).fillColor("#666").text(image.filename);
+        doc.moveDown(0.5);
+        try {
+          doc.image(image.data, { fit: [480, 620], align: "center" });
+        } catch (error) {
+          doc.fillColor("#c0392b").text("Photo illisible.");
+        }
+      }
+    });
+
+    return this.store(pdf, STORAGE_FOLDERS.claims);
   }
 
   async generateQuoteSummaryPdf(quoteRequest: any): Promise<GeneratedDocument> {

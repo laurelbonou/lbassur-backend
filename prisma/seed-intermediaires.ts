@@ -73,7 +73,7 @@ const COURTIERS: { rank: number; name: string; code: string | null }[] = [
   { rank: 39, name: "KAMERS SARL",                                                 code: "3531" },
   { rank: 40, name: "KIETUD",                                                      code: "3790" },
   { rank: 41, name: "KOINONIA BROKER",                                             code: "3800" },
-  { rank: 42, name: "LABASSUR",                                                    code: "3610" }, // nous
+  { rank: 42, name: "LBASSUR",                                                     code: "3610" }, // nous
   { rank: 43, name: "La Protectrice",                                              code: "3411" },
   { rank: 44, name: "NAP'S",                                                       code: "3541" },
   { rank: 45, name: "OKASSUR",                                                     code: "3511" },

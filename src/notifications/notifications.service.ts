@@ -77,6 +77,65 @@ export class NotificationsService {
     // Appel désactivé: await this.sendWhatsApp(clientPhone, message);
   }
 
+  /**
+   * Accusé de réception d'une déclaration de sinistre.
+   *
+   * Le client vient de décrire un accident et d'envoyer des photos : sans
+   * confirmation, il ne sait pas si sa déclaration est passée. La référence
+   * lui donne de quoi nous rappeler.
+   */
+  async notifyClientClaimReceived(claim: {
+    reference: string;
+    incidentDate: Date;
+    client?: { email?: string | null; fullName?: string | null } | null;
+  }) {
+    const email = claim.client?.email;
+    if (!email) return; // Un client sans email n'est pas une erreur : il sera rappelé.
+
+    const nom = claim.client?.fullName ? ` ${claim.client.fullName}` : "";
+    const dateSinistre = claim.incidentDate.toLocaleDateString("fr-FR");
+
+    const message =
+      `Bonjour${nom},\n\n` +
+      `Nous avons bien reçu votre déclaration de sinistre du ${dateSinistre}.\n\n` +
+      `Référence de votre dossier : ${claim.reference}\n\n` +
+      `Conservez cette référence : elle nous permettra de retrouver votre dossier ` +
+      `rapidement si vous nous appelez.\n\n` +
+      `Un gestionnaire LBASSUR examine votre déclaration et reviendra vers vous. ` +
+      `Vous pouvez suivre son avancement depuis votre espace membre.\n\n` +
+      `Cordialement,\nL'équipe LBASSUR`;
+
+    await this.sendEmail(email, `Déclaration de sinistre reçue — ${claim.reference}`, message);
+  }
+
+  /** Alerte interne : un sinistre attend d'être pris en charge. */
+  async notifyAdminNewClaim(
+    adminEmail: string,
+    claim: {
+      reference: string;
+      locationCity?: string | null;
+      hasInjuries?: boolean;
+      client?: { fullName?: string | null; phone?: string | null } | null;
+    },
+  ) {
+    const lignes = [
+      `Nouvelle déclaration de sinistre : ${claim.reference}`,
+      ``,
+      `Client   : ${claim.client?.fullName || "Non renseigné"}`,
+      `Téléphone: ${claim.client?.phone || "Non renseigné"}`,
+      `Commune  : ${claim.locationCity || "Non renseignée"}`,
+    ];
+
+    // Les blessés changent l'urgence du traitement : autant le voir dans l'objet.
+    if (claim.hasInjuries) lignes.push(``, `⚠ Des blessés sont signalés.`);
+
+    await this.sendEmail(
+      adminEmail,
+      `${claim.hasInjuries ? "[BLESSÉS] " : ""}Sinistre ${claim.reference}`,
+      lignes.join("\n"),
+    );
+  }
+
   async notifyAdminNewQuote(adminEmail: string, quoteId: string) {
     const message = `Une nouvelle demande de souscription (ID: ${quoteId}) a été payée et attend d'être traitée.`;
     await this.sendEmail(adminEmail, 'Nouvelle Souscription LBAssur', message);

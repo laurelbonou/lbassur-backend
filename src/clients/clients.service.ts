@@ -1,16 +1,20 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ClaimStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateClaimDto } from './dto/create-claim.dto';
 import { CloudinaryService } from '../storage/cloudinary.service';
+import { DocumentsService } from '../documents/documents.service';
 
 @Injectable()
 export class ClientsService {
+  private readonly logger = new Logger(ClientsService.name);
+
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private cloudinary: CloudinaryService,
+    private documentsService: DocumentsService,
   ) {}
 
   /**
@@ -117,8 +121,19 @@ export class ClientsService {
             }
           : undefined,
       },
-      include: { attachments: true },
+      include: { attachments: true, client: true },
     });
+
+    // L'envoi ne doit pas faire échouer la déclaration : le sinistre est
+    // enregistré, un email qui ne part pas se rattrape, pas une déclaration
+    // perdue au moment où le client en a le plus besoin.
+    this.notificationsService
+      .notifyClientClaimReceived(claim)
+      .catch((err) => this.logger.error("Accusé de réception non envoyé", err));
+
+    this.notificationsService
+      .notifyAdminNewClaim(process.env.ADMIN_EMAIL || "contact@lbassur.bj", claim)
+      .catch((err) => this.logger.error("Alerte sinistre non envoyée à l'administration", err));
 
     return this.withSignedUrls(claim);
   }
@@ -132,6 +147,21 @@ export class ClientsService {
     return claims.map((claim) => this.withSignedUrls(claim));
   }
 
+  /**
+   * Compose le dossier PDF à transmettre à la compagnie et renvoie son URL.
+   * Le document est régénéré à chaque demande : le dossier évolue (pièces
+   * ajoutées, statut), un PDF figé serait périmé.
+   */
+  async generateClaimReport(id: string) {
+    const claim = await this.prisma.claim.findUnique({
+      where: { id },
+      include: { client: true, quoteRequest: true, attachments: true },
+    });
+    if (!claim) throw new NotFoundException("Sinistre introuvable.");
+
+    return this.documentsService.generateClaimReport(claim);
+  }
+
   async getClaim(id: string) {
     const claim = await this.prisma.claim.findUnique({
       where: { id },
@@ -141,7 +171,7 @@ export class ClientsService {
     return this.withSignedUrls(claim);
   }
 
-  async updateClaimStatus(id: string, status: ClaimStatus) {
+  async updateClaimStatus(id: string, status: ClaimStatus, adminNote?: string) {
     const claim = await this.prisma.claim.findUnique({
       where: { id },
       select: { id: true },
@@ -150,7 +180,15 @@ export class ClientsService {
 
     const updated = await this.prisma.claim.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        // Une note absente laisse la précédente en place ; une chaîne vide
+        // l'efface. Sans cette distinction, changer un statut effacerait le
+        // message déjà adressé au client.
+        ...(adminNote === undefined
+          ? {}
+          : { adminNote: adminNote.trim() || null }),
+      },
       include: { client: true, quoteRequest: true, attachments: true },
     });
     return this.withSignedUrls(updated);
