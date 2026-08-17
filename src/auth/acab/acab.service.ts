@@ -102,10 +102,13 @@ export class AcabService {
    * ne vient pas de la signature seule — n'importe qui peut faire émettre un
    * state valide — mais du nonce déposé en cookie et revérifié au retour.
    */
-  demarrer(): { url: string; nonce: string } {
+  demarrer(fenetre: boolean): { url: string; nonce: string } {
     const { id } = this.credentials();
     const nonce = randomBytes(32).toString('hex');
-    const state = this.jwt.sign({ n: nonce }, { expiresIn: DUREE_STATE });
+    // Le mode voyage DANS le state signé, et non dans un cookie ou un
+    // paramètre du retour : l'ACAB ne nous renvoie que « code » et « state »,
+    // et un mode falsifiable permettrait de forcer la réponse HTML.
+    const state = this.jwt.sign({ n: nonce, f: fenetre }, { expiresIn: DUREE_STATE });
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -117,17 +120,24 @@ export class AcabService {
     return { url: `${this.baseUrl}/oauth/authorize?${params}`, nonce };
   }
 
-  /** Le state du retour doit porter exactement le nonce du cookie d'aller. */
-  verifierState(state: string | undefined, nonceCookie: string | undefined): boolean {
-    if (!state || !nonceCookie) return false;
+  /**
+   * Le state du retour doit porter exactement le nonce du cookie d'aller.
+   * Renvoie aussi le mode d'ouverture, qu'il transporte.
+   */
+  verifierState(
+    state: string | undefined,
+    nonceCookie: string | undefined,
+  ): { valide: boolean; fenetre: boolean } {
+    const echec = { valide: false, fenetre: false };
+    if (!state || !nonceCookie) return echec;
     try {
-      const { n } = this.jwt.verify<{ n?: string }>(state);
-      if (!n) return false;
+      const { n, f } = this.jwt.verify<{ n?: string; f?: boolean }>(state);
+      if (!n) return echec;
       const a = Buffer.from(n);
       const b = Buffer.from(nonceCookie);
-      return a.length === b.length && timingSafeEqual(a, b);
+      return { valide: a.length === b.length && timingSafeEqual(a, b), fenetre: Boolean(f) };
     } catch {
-      return false;
+      return echec;
     }
   }
 
