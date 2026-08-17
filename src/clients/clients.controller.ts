@@ -20,12 +20,21 @@ export class ClientsController {
   private getClientId(req: any): string {
     const token = this.extractTokenFromHeader(req);
     if (!token) throw new UnauthorizedException('Token required');
+
+    let payload: { sub?: string; role?: string };
     try {
-      const payload = this.jwtService.verify(token);
-      return payload.sub;
+      payload = this.jwtService.verify(token);
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+
+    // Le backend émet plusieurs familles de jetons (CLIENT, BROKER). Une
+    // signature valide ne suffit donc pas : sans ce contrôle, un jeton courtier
+    // serait accepté ici et son identifiant lu comme un identifiant client.
+    if (payload.role !== 'CLIENT' || !payload.sub) {
+      throw new UnauthorizedException('Invalid token');
+    }
+    return payload.sub;
   }
 
   @Get('me/quotes')

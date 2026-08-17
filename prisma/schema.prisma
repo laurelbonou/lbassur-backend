@@ -328,8 +328,21 @@ model Broker {
   type IntermediaryType @default(COURTIER)
 
   // ── Agrément ministériel (courtiers uniquement) ──
-  approvalRank Int? // N° dans la liste du Ministère des Finances
+  // Rang = position dans la liste du Ministère (1, 2, 3…), pas le n° d'agrément.
+  // Reste un entier : c'est ce qui permet de restituer la liste dans l'ordre.
+  approvalRank Int? // Rang dans la liste du Ministère des Finances
   approvalYear Int? // Exercice de l'agrément (ex: 2026)
+
+  // ── Rattachement ACAB (courtiers uniquement) ──
+  // Renseigné au premier « Se connecter avec ACAB ». C'est la clé de
+  // rapprochement stable : la dénomination d'un cabinet peut changer, son
+  // numéro d'identification non.
+  acabNumber String? @unique // Format DDDDDD-ACAB-DDDDDD
+  // Liste close, garantie par l'ACAB : ACTIVE | SUSPENDED | RADIE. Toute autre
+  // situation d'un cabinet est ramenée par eux à SUSPENDED — n'autoriser que
+  // ACTIVE ne peut donc pas écarter un adhérent par méconnaissance d'un statut.
+  acabStatus   String?
+  acabSyncedAt DateTime? // Dernier retour d'authentification ACAB
 
   // ── Compagnie mandante ──
   // NULL pour un COURTIER (il est libre de placer chez n'importe quel assureur).

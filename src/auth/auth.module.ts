@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { AcabService } from './acab/acab.service';
+import { AcabController } from './acab/acab.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 
@@ -13,7 +15,7 @@ import { JwtModule } from '@nestjs/jwt';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
+  controllers: [AuthController, AcabController],
+  providers: [AuthService, AcabService],
 })
 export class AuthModule {}
