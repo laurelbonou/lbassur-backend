@@ -10,7 +10,7 @@ import {
   IsBoolean,
   IsEnum,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IntermediaryType } from "@prisma/client";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 
@@ -143,6 +143,20 @@ export class QueryBrokersDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  /**
+   * Ne remonter que les cabinets reconnus par l'ACAB dont l'accès n'a pas
+   * encore été ouvert par LBASSUR.
+   *
+   * C'est un filtre et non une route « /brokers/pending » : celle-ci serait
+   * captée par @Get(":slug") selon l'ordre de déclaration des méthodes, et
+   * adosser une règle d'accès à cet ordre, c'est accepter qu'un réagencement
+   * la rompe en silence.
+   */
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === true || value === 'true')
+  pending?: boolean;
 }
 
 export class SetInsurerCodeDto {

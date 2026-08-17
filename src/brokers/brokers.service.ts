@@ -132,12 +132,19 @@ export class BrokersService {
   // ── Admin ──────────────────────────────────────────────────────────────────
 
   async findAll(query: QueryBrokersDto) {
-    const { page = 1, limit = 20, search, type } = query;
+    const { page = 1, limit = 20, search, type, pending } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.BrokerWhereInput = {};
     if (type) where.type = type;
     if (search) where.name = { contains: search, mode: "insensitive" };
+    // Cabinets que l'ACAB a authentifiés mais dont LBASSUR n'a pas encore
+    // ouvert l'accès : sans cette vue, ils resteraient bloqués sans que
+    // personne ne les voie.
+    if (pending) {
+      where.acabNumber = { not: null };
+      where.active = false;
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.broker.findMany({
