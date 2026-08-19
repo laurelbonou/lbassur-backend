@@ -84,6 +84,14 @@ export class SimulationsService {
         offerId: rule.offerId,
         price: rule.price,
         currency: rule.currency,
+        // Deux lignes d'une même compagnie ne se distinguent souvent que par
+        // ces deux champs : sans eux, le comparateur affiche deux fois le même
+        // assureur à 11 000 F d'écart, sans rien pour l'expliquer.
+        //
+        // Le bonus porte sur la prime RC seule, pas sur le total taxes et
+        // accessoires comprises : ne jamais en déduire une économie affichée.
+        bonusRate: rule.bonusRate,
+        pricingStatus: rule.pricingStatus,
         guarantees: rule.guarantees.length > 0 ? rule.guarantees : rule.offer?.guarantees ?? [],
         tag: rule.offer?.tag,
         rating: rule.offer?.rating,
